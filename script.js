@@ -1,15 +1,18 @@
-// Restaurant Selector App
+// Restaurant Selector App - OpenSource Version
 class RestaurantSelector {
     constructor() {
         this.map = null;
-        this.geocoder = null;
-        this.placesService = null;
         this.userLocation = null;
         this.selectedTime = '18:00';
         this.restaurants = [];
         this.currentStep = 'address';
         this.isSpinning = false;
         this.isMobile = window.innerWidth < 768;
+        this.selectedRestaurant = null;
+        
+        // API endpoints
+        this.nominatimAPI = 'https://nominatim.openstreetmap.org';
+        this.overpassAPI = 'https://overpass-api.de/api/interpreter';
         
         this.init();
     }
@@ -34,6 +37,7 @@ class RestaurantSelector {
         // Address input
         const addressInput = document.getElementById('address-input');
         const addressSubmit = document.getElementById('address-submit');
+        const useCurrentLocation = document.getElementById('use-current-location');
         
         addressInput?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
@@ -42,6 +46,7 @@ class RestaurantSelector {
         });
         
         addressSubmit?.addEventListener('click', () => this.submitAddress());
+        useCurrentLocation?.addEventListener('click', () => this.getCurrentLocation());
 
         // Time selection
         const timeInput = document.getElementById('meal-time');
@@ -72,15 +77,92 @@ class RestaurantSelector {
         reroll?.addEventListener('click', () => this.startRandomSelection());
 
         // Result actions
-        const viewOnMaps = document.getElementById('view-on-maps');
+        const viewOnOSM = document.getElementById('view-on-osm');
+        const viewOnGoogle = document.getElementById('view-on-google');
         const startOver = document.getElementById('start-over');
 
-        viewOnMaps?.addEventListener('click', () => this.openGoogleMaps());
+        viewOnOSM?.addEventListener('click', () => this.openOSMMap());
+        viewOnGoogle?.addEventListener('click', () => this.openGoogleMaps());
         startOver?.addEventListener('click', () => this.restart());
 
         // Error retry
         const retryBtn = document.getElementById('retry-btn');
         retryBtn?.addEventListener('click', () => this.restart());
+    }
+
+    async getCurrentLocation() {
+        if (!navigator.geolocation) {
+            this.showError('您的瀏覽器不支援定位功能');
+            return;
+        }
+
+        this.showLoading('address-loading');
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                
+                try {
+                    // Reverse geocoding to get address
+                    const address = await this.reverseGeocode(lat, lng);
+                    this.userLocation = {
+                        lat: lat,
+                        lng: lng,
+                        address: address
+                    };
+                    
+                    const addressInput = document.getElementById('address-input');
+                    addressInput.value = address;
+                    
+                    this.hideLoading('address-loading');
+                    this.showStep('time');
+                } catch (error) {
+                    this.hideLoading('address-loading');
+                    this.showError('無法獲取地址資訊');
+                    console.error('Reverse geocoding error:', error);
+                }
+            },
+            (error) => {
+                this.hideLoading('address-loading');
+                let errorMessage = '定位失敗';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage = '請允許定位權限後再試';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage = '無法獲取您的位置';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage = '定位超時，請稍後再試';
+                        break;
+                }
+                this.showError(errorMessage);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000 // 5 minutes
+            }
+        );
+    }
+
+    async reverseGeocode(lat, lng) {
+        const url = `${this.nominatimAPI}/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=zh-TW,zh,en`;
+        
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data && data.display_name) {
+                return data.display_name;
+            } else {
+                return `緯度 ${lat.toFixed(4)}, 經度 ${lng.toFixed(4)}`;
+            }
+        } catch (error) {
+            console.error('Reverse geocoding error:', error);
+            return `緯度 ${lat.toFixed(4)}, 經度 ${lng.toFixed(4)}`;
+        }
     }
 
     async submitAddress() {
@@ -95,11 +177,6 @@ class RestaurantSelector {
         this.showLoading('address-loading');
 
         try {
-            // Initialize geocoder if not already done
-            if (!this.geocoder) {
-                this.geocoder = new google.maps.Geocoder();
-            }
-
             const location = await this.geocodeAddress(address);
             this.userLocation = location;
             
@@ -113,21 +190,27 @@ class RestaurantSelector {
         }
     }
 
-    geocodeAddress(address) {
-        return new Promise((resolve, reject) => {
-            this.geocoder.geocode({ address: address }, (results, status) => {
-                if (status === 'OK') {
-                    const location = results[0].geometry.location;
-                    resolve({
-                        lat: location.lat(),
-                        lng: location.lng(),
-                        address: results[0].formatted_address
-                    });
-                } else {
-                    reject(new Error(`Geocoding failed: ${status}`));
-                }
-            });
-        });
+    async geocodeAddress(address) {
+        const url = `${this.nominatimAPI}/search?format=json&q=${encodeURIComponent(address)}&limit=1&accept-language=zh-TW,zh,en`;
+        
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data && data.length > 0) {
+                const result = data[0];
+                return {
+                    lat: parseFloat(result.lat),
+                    lng: parseFloat(result.lon),
+                    address: result.display_name
+                };
+            } else {
+                throw new Error('Address not found');
+            }
+        } catch (error) {
+            console.error('Geocoding error:', error);
+            throw error;
+        }
     }
 
     updateTimeButtons() {
@@ -166,20 +249,19 @@ class RestaurantSelector {
         this.updateSearchStatus('正在搜尋附近餐廳...');
 
         try {
-            // Initialize Places service if not already done
-            if (!this.placesService) {
-                const mapDiv = document.createElement('div');
-                const map = new google.maps.Map(mapDiv);
-                this.placesService = new google.maps.places.PlacesService(map);
+            const restaurants = await this.findNearbyRestaurants();
+            this.updateSearchStatus(`找到 ${restaurants.length} 家餐廳，正在篩選...`);
+            
+            if (restaurants.length === 0) {
+                this.showError('找不到附近的餐廳，請嘗試其他地點');
+                return;
             }
 
-            const restaurants = await this.findNearbyRestaurants();
-            this.updateSearchStatus('正在檢查營業時間...');
-            
-            const openRestaurants = await this.filterOpenRestaurants(restaurants);
+            // Simple filtering by time (basic assumption about operating hours)
+            const openRestaurants = this.filterRestaurantsByTime(restaurants);
             
             if (openRestaurants.length === 0) {
-                this.showError('找不到在此時間營業的餐廳，請嘗試其他時間');
+                this.showError('找不到在此時間可能營業的餐廳，請嘗試其他時間');
                 return;
             }
 
@@ -193,103 +275,143 @@ class RestaurantSelector {
         }
     }
 
-    findNearbyRestaurants() {
-        return new Promise((resolve, reject) => {
-            const request = {
-                location: new google.maps.LatLng(this.userLocation.lat, this.userLocation.lng),
-                radius: 2000, // 2km radius
-                type: ['restaurant', 'meal_takeaway', 'food'],
-                openNow: false // We'll filter manually for more control
-            };
+    async findNearbyRestaurants() {
+        const radius = window.CONFIG?.SEARCH_RADIUS || 2000; // 2km
+        const lat = this.userLocation.lat;
+        const lng = this.userLocation.lng;
+        
+        // Calculate bounding box
+        const latDelta = radius / 111320; // Approximate degrees per meter
+        const lngDelta = radius / (111320 * Math.cos(lat * Math.PI / 180));
+        
+        const south = lat - latDelta;
+        const north = lat + latDelta;
+        const west = lng - lngDelta;
+        const east = lng + lngDelta;
 
-            this.placesService.nearbySearch(request, (results, status) => {
-                if (status === google.maps.places.PlacesServiceStatus.OK) {
-                    resolve(results);
-                } else {
-                    reject(new Error(`Places search failed: ${status}`));
+        // Overpass QL query to find restaurants
+        const query = `
+        [out:json][timeout:25];
+        (
+          node["amenity"="restaurant"](${south},${west},${north},${east});
+          node["amenity"="fast_food"](${south},${west},${north},${east});
+          node["amenity"="cafe"](${south},${west},${north},${east});
+          node["amenity"="food_court"](${south},${west},${north},${east});
+          way["amenity"="restaurant"](${south},${west},${north},${east});
+          way["amenity"="fast_food"](${south},${west},${north},${east});
+          way["amenity"="cafe"](${south},${west},${north},${east});
+          way["amenity"="food_court"](${south},${west},${north},${east});
+          relation["amenity"="restaurant"](${south},${west},${north},${east});
+          relation["amenity"="fast_food"](${south},${west},${north},${east});
+          relation["amenity"="cafe"](${south},${west},${north},${east});
+          relation["amenity"="food_court"](${south},${west},${north},${east});
+        );
+        out center;
+        `;
+
+        try {
+            const response = await fetch(this.overpassAPI, {
+                method: 'POST',
+                body: query,
+                headers: {
+                    'Content-Type': 'text/plain'
                 }
             });
+
+            const data = await response.json();
+            
+            return data.elements.map(element => {
+                // Get coordinates
+                let elementLat, elementLng;
+                if (element.lat && element.lon) {
+                    elementLat = element.lat;
+                    elementLng = element.lon;
+                } else if (element.center) {
+                    elementLat = element.center.lat;
+                    elementLng = element.center.lon;
+                } else {
+                    return null;
+                }
+
+                // Calculate distance
+                const distance = this.calculateDistance(lat, lng, elementLat, elementLng);
+
+                return {
+                    id: element.id,
+                    name: element.tags?.name || element.tags?.['name:zh'] || '未知餐廳',
+                    amenity: element.tags?.amenity || 'restaurant',
+                    cuisine: element.tags?.cuisine || '',
+                    address: element.tags?.['addr:full'] || element.tags?.['addr:street'] || '',
+                    phone: element.tags?.phone || '',
+                    website: element.tags?.website || '',
+                    opening_hours: element.tags?.opening_hours || '',
+                    lat: elementLat,
+                    lng: elementLng,
+                    distance: distance
+                };
+            }).filter(restaurant => restaurant !== null)
+              .sort((a, b) => a.distance - b.distance)
+              .slice(0, window.CONFIG?.SEARCH?.MAX_RESULTS || 20);
+
+        } catch (error) {
+            console.error('Overpass API error:', error);
+            throw error;
+        }
+    }
+
+    calculateDistance(lat1, lng1, lat2, lng2) {
+        const R = 6371; // Earth's radius in kilometers
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLng/2) * Math.sin(dLng/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c * 1000; // Return distance in meters
+    }
+
+    filterRestaurantsByTime(restaurants) {
+        const selectedTime = this.parseTime(this.selectedTime);
+        const now = new Date();
+        const dayOfWeek = now.getDay();
+        
+        return restaurants.filter(restaurant => {
+            // If no opening hours data, assume it might be open
+            if (!restaurant.opening_hours) {
+                return true;
+            }
+
+            // Basic opening hours parsing (simplified)
+            return this.isRestaurantOpenBasic(restaurant.opening_hours, selectedTime, dayOfWeek);
         });
     }
 
-    async filterOpenRestaurants(restaurants) {
-        const openRestaurants = [];
-        const selectedTime = this.parseTime(this.selectedTime);
-        const dayOfWeek = new Date().getDay();
-
-        for (const restaurant of restaurants) {
-            try {
-                const details = await this.getPlaceDetails(restaurant.place_id);
-                
-                if (this.isRestaurantOpen(details, selectedTime, dayOfWeek)) {
-                    openRestaurants.push({
-                        ...restaurant,
-                        details: details
-                    });
-                }
-            } catch (error) {
-                console.warn(`Failed to get details for ${restaurant.name}:`, error);
-                // Include restaurant without detailed hours check
-                openRestaurants.push(restaurant);
-            }
+    isRestaurantOpenBasic(openingHours, selectedTime, dayOfWeek) {
+        // Very basic parsing of opening hours
+        // This is simplified - real parsing would be much more complex
+        const hoursLower = openingHours.toLowerCase();
+        
+        // If it says 24/7 or always open
+        if (hoursLower.includes('24/7') || hoursLower.includes('24 hours')) {
+            return true;
         }
 
-        return openRestaurants;
-    }
+        // If it's closed, skip
+        if (hoursLower.includes('closed') || hoursLower.includes('off')) {
+            return false;
+        }
 
-    getPlaceDetails(placeId) {
-        return new Promise((resolve, reject) => {
-            const request = {
-                placeId: placeId,
-                fields: ['name', 'opening_hours', 'formatted_address', 'rating', 'price_level', 'photos', 'geometry']
-            };
+        // For simplicity, if we can't parse it properly, assume it might be open during dinner hours
+        if (selectedTime >= 17 * 60 && selectedTime <= 21 * 60) { // 5 PM to 9 PM
+            return true;
+        }
 
-            this.placesService.getDetails(request, (place, status) => {
-                if (status === google.maps.places.PlacesServiceStatus.OK) {
-                    resolve(place);
-                } else {
-                    reject(new Error(`Place details failed: ${status}`));
-                }
-            });
-        });
+        return true; // Default to open
     }
 
     parseTime(timeString) {
         const [hours, minutes] = timeString.split(':').map(Number);
         return hours * 60 + minutes; // Convert to minutes
-    }
-
-    isRestaurantOpen(details, selectedTime, dayOfWeek) {
-        if (!details.opening_hours || !details.opening_hours.periods) {
-            return true; // If no hours data, assume it might be open
-        }
-
-        const periods = details.opening_hours.periods;
-        
-        for (const period of periods) {
-            if (period.open && period.open.day === dayOfWeek) {
-                const openTime = period.open.time ? this.parseGoogleTime(period.open.time) : 0;
-                const closeTime = period.close ? 
-                    this.parseGoogleTime(period.close.time) : 
-                    24 * 60; // If no close time, assume open all day
-
-                // Handle overnight restaurants (close time on next day)
-                if (closeTime < openTime) {
-                    return selectedTime >= openTime || selectedTime <= closeTime;
-                } else {
-                    return selectedTime >= openTime && selectedTime <= closeTime;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    parseGoogleTime(timeString) {
-        if (!timeString || timeString.length !== 4) return 0;
-        const hours = parseInt(timeString.substr(0, 2));
-        const minutes = parseInt(timeString.substr(2, 2));
-        return hours * 60 + minutes;
     }
 
     setupRestaurantRoulette() {
@@ -315,8 +437,8 @@ class RestaurantSelector {
         restaurantCard.classList.add('spinning');
 
         // Show random restaurants during animation
-        const animationDuration = 2000;
-        const intervalTime = 100;
+        const animationDuration = window.CONFIG?.ANIMATION?.ROULETTE_DURATION || 2000;
+        const intervalTime = window.CONFIG?.ANIMATION?.CARD_SPIN_INTERVAL || 100;
         const intervals = animationDuration / intervalTime;
         let currentInterval = 0;
 
@@ -340,7 +462,7 @@ class RestaurantSelector {
                         restaurantCard.classList.remove('highlighting');
                         this.showFinalResult(selectedRestaurant);
                         this.isSpinning = false;
-                    }, 1000);
+                    }, window.CONFIG?.ANIMATION?.HIGHLIGHT_DURATION || 1000);
                 }, 500);
             }
         }, intervalTime);
@@ -353,57 +475,49 @@ class RestaurantSelector {
 
         restaurantName.textContent = restaurant.name;
         
-        const rating = restaurant.rating ? `⭐ ${restaurant.rating}` : '';
-        const priceLevel = this.getPriceLevel(restaurant.price_level);
-        const vicinity = restaurant.vicinity || '';
+        const cuisine = restaurant.cuisine ? `🍽️ ${restaurant.cuisine}` : '';
+        const distance = `📍 ${(restaurant.distance / 1000).toFixed(1)}km`;
+        const amenity = this.getAmenityIcon(restaurant.amenity);
         
         restaurantInfo.innerHTML = `
-            <div>${rating} ${priceLevel}</div>
-            <div style="font-size: 0.8rem; opacity: 0.7;">${vicinity}</div>
+            <div>${amenity} ${cuisine}</div>
+            <div style="font-size: 0.8rem; opacity: 0.7;">${distance}</div>
         `;
     }
 
-    getPriceLevel(priceLevel) {
-        if (typeof priceLevel !== 'number') return '';
-        
-        const levels = {
-            0: '💰',
-            1: '💰',
-            2: '💰💰',
-            3: '💰💰💰',
-            4: '💰💰💰💰'
+    getAmenityIcon(amenity) {
+        const icons = {
+            'restaurant': '🍽️',
+            'fast_food': '🍔',
+            'cafe': '☕',
+            'food_court': '🍱'
         };
-        
-        return levels[priceLevel] || '';
+        return icons[amenity] || '🍽️';
     }
 
     showFinalResult(restaurant) {
         this.selectedRestaurant = restaurant;
         const resultContainer = document.getElementById('final-restaurant');
         
-        const rating = restaurant.rating ? `⭐ ${restaurant.rating}` : '';
-        const priceLevel = this.getPriceLevel(restaurant.price_level);
+        const cuisine = restaurant.cuisine ? `🍽️ ${restaurant.cuisine}` : '';
+        const distance = `📍 ${(restaurant.distance / 1000).toFixed(1)}km`;
+        const amenityIcon = this.getAmenityIcon(restaurant.amenity);
         
         resultContainer.innerHTML = `
             <div class="name">${restaurant.name}</div>
             <div class="details">
-                <div class="detail">📍 ${restaurant.vicinity || ''}</div>
-                <div class="detail">${rating} ${priceLevel}</div>
+                <div class="detail">${amenityIcon} ${restaurant.amenity}</div>
+                <div class="detail">${cuisine}</div>
+                <div class="detail">${distance}</div>
                 <div class="detail">🕒 選擇時間: ${this.selectedTime}</div>
+                ${restaurant.address ? `<div class="detail">📍 ${restaurant.address}</div>` : ''}
+                ${restaurant.phone ? `<div class="detail">📞 ${restaurant.phone}</div>` : ''}
             </div>
         `;
 
-        // Setup Google Maps link
-        const viewOnMaps = document.getElementById('view-on-maps');
-        const lat = restaurant.geometry.location.lat();
-        const lng = restaurant.geometry.location.lng();
-        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.name)}&query_place_id=${restaurant.place_id}`;
-        
-        viewOnMaps.onclick = () => window.open(mapsUrl, '_blank');
-
         // Load map on desktop
         if (!this.isMobile) {
-            this.initializeMap(lat, lng, restaurant);
+            this.initializeMap(restaurant.lat, restaurant.lng, restaurant);
         }
 
         this.showStep('result');
@@ -418,30 +532,38 @@ class RestaurantSelector {
         const mapContainer = document.getElementById('map-container');
         if (!mapContainer) return;
 
-        const map = new google.maps.Map(mapContainer, {
-            center: { lat: lat, lng: lng },
-            zoom: 16,
-            styles: [
-                {
-                    featureType: 'poi',
-                    elementType: 'labels',
-                    stylers: [{ visibility: 'off' }]
-                }
-            ]
-        });
+        try {
+            // Clear existing map
+            if (this.map) {
+                this.map.remove();
+            }
 
-        new google.maps.Marker({
-            position: { lat: lat, lng: lng },
-            map: map,
-            title: restaurant.name,
-            animation: google.maps.Animation.BOUNCE
-        });
+            // Create new map
+            this.map = L.map(mapContainer).setView([lat, lng], 16);
 
-        // Stop marker animation after 2 seconds
-        setTimeout(() => {
-            const markers = map.getMarkers?.() || [];
-            markers.forEach(marker => marker.setAnimation(null));
-        }, 2000);
+            // Add OpenStreetMap tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(this.map);
+
+            // Add marker for restaurant
+            const marker = L.marker([lat, lng]).addTo(this.map);
+            marker.bindPopup(`<b>${restaurant.name}</b><br>${restaurant.address || ''}`);
+
+            // Add marker for user location if available
+            if (this.userLocation) {
+                const userMarker = L.marker([this.userLocation.lat, this.userLocation.lng])
+                    .addTo(this.map);
+                userMarker.bindPopup('你的位置');
+                
+                // Fit map to show both markers
+                const group = new L.featureGroup([marker, userMarker]);
+                this.map.fitBounds(group.getBounds().pad(0.1));
+            }
+
+        } catch (error) {
+            console.error('Map initialization error:', error);
+        }
     }
 
     showStep(stepName) {
@@ -505,6 +627,12 @@ class RestaurantSelector {
         this.selectedRestaurant = null;
         this.isSpinning = false;
         
+        // Clear map
+        if (this.map) {
+            this.map.remove();
+            this.map = null;
+        }
+        
         // Reset form
         document.getElementById('address-input').value = '';
         this.updateTimeDisplay();
@@ -522,52 +650,27 @@ class RestaurantSelector {
         }, 100);
     }
 
+    openOSMMap() {
+        if (!this.selectedRestaurant) return;
+        
+        const lat = this.selectedRestaurant.lat;
+        const lng = this.selectedRestaurant.lng;
+        const osmUrl = `https://www.openstreetmap.org/#map=16/${lat}/${lng}`;
+        
+        window.open(osmUrl, '_blank');
+    }
+
     openGoogleMaps() {
         if (!this.selectedRestaurant) return;
         
-        const lat = this.selectedRestaurant.geometry.location.lat();
-        const lng = this.selectedRestaurant.geometry.location.lng();
-        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(this.selectedRestaurant.name)}&query_place_id=${this.selectedRestaurant.place_id}`;
+        const lat = this.selectedRestaurant.lat;
+        const lng = this.selectedRestaurant.lng;
+        const name = encodeURIComponent(this.selectedRestaurant.name);
+        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${name}@${lat},${lng}`;
         
         window.open(mapsUrl, '_blank');
     }
 }
-
-// Initialize Google Maps callback
-function initMap() {
-    // This function is called when Google Maps API is loaded
-    window.restaurantSelector = new RestaurantSelector();
-}
-
-// Handle API loading errors
-window.gm_authFailure = function() {
-    console.error('Google Maps API authentication failed');
-    const errorSection = document.getElementById('error-section');
-    const errorMessage = document.getElementById('error-message');
-    
-    if (errorSection && errorMessage) {
-        errorMessage.textContent = 'Google Maps API 認證失敗，請檢查 API 金鑰設定';
-        document.querySelectorAll('.step').forEach(step => step.style.display = 'none');
-        errorSection.style.display = 'block';
-    }
-};
-
-// Initialize app when DOM is ready (fallback if Google Maps fails)
-document.addEventListener('DOMContentLoaded', function() {
-    // If Google Maps API hasn't loaded after 5 seconds, show error
-    setTimeout(() => {
-        if (typeof google === 'undefined') {
-            const errorSection = document.getElementById('error-section');
-            const errorMessage = document.getElementById('error-message');
-            
-            if (errorSection && errorMessage && !window.restaurantSelector) {
-                errorMessage.textContent = '無法載入 Google Maps API，請檢查網路連線或 API 設定';
-                document.querySelectorAll('.step').forEach(step => step.style.display = 'none');
-                errorSection.style.display = 'block';
-            }
-        }
-    }, 5000);
-});
 
 // Handle window resize for mobile/desktop switching
 window.addEventListener('resize', function() {

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 測試頁面 - 晚餐選擇器</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #5a6fd8;
+        }
+        .result {
+            background: #f0f8ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+        }
+        .error {
+            background: #ffe6e6;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #ff6b6b;
+        }
+        input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 5px;
+            width: 200px;
+        }
+        pre {
+            background: #f8f8f8;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🍽️ 晚餐選擇器 API 測試</h1>
+    <p>這個頁面用來測試各種 API 是否正常工作</p>
+
+    <!-- Test Nominatim Geocoding -->
+    <div class="test-section">
+        <h2>📍 測試地址搜尋 (Nominatim)</h2>
+        <input type="text" id="address-test" placeholder="輸入地址，例如：台北車站" value="台北車站">
+        <button onclick="testGeocode()">搜尋地址</button>
+        <div id="geocode-result"></div>
+    </div>
+
+    <!-- Test Browser Geolocation -->
+    <div class="test-section">
+        <h2>🌍 測試瀏覽器定位</h2>
+        <button onclick="testGeolocation()">獲取目前位置</button>
+        <div id="geolocation-result"></div>
+    </div>
+
+    <!-- Test Overpass API -->
+    <div class="test-section">
+        <h2>🍴 測試餐廳搜尋 (Overpass API)</h2>
+        <input type="number" id="lat-test" placeholder="緯度" value="25.0478" step="any">
+        <input type="number" id="lng-test" placeholder="經度" value="121.5168" step="any">
+        <button onclick="testRestaurantSearch()">搜尋附近餐廳</button>
+        <div id="restaurant-result"></div>
+    </div>
+
+    <!-- Test Leaflet Map -->
+    <div class="test-section">
+        <h2>🗺️ 測試地圖顯示 (Leaflet)</h2>
+        <button onclick="testMap()">顯示地圖</button>
+        <div id="map-container" style="height: 300px; margin-top: 10px; border-radius: 5px; overflow: hidden;"></div>
+        <div id="map-result"></div>
+    </div>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Load configuration
+        const CONFIG = {
+            SEARCH_RADIUS: 2000,
+            DEFAULT_LOCATION: { lat: 25.0478, lng: 121.5168 },
+            APIS: {
+                NOMINATIM: 'https://nominatim.openstreetmap.org',
+                OVERPASS: 'https://overpass-api.de/api/interpreter'
+            }
+        };
+
+        let testMap = null;
+
+        async function testGeocode() {
+            const address = document.getElementById('address-test').value;
+            const resultDiv = document.getElementById('geocode-result');
+            
+            if (!address) {
+                resultDiv.innerHTML = '<div class="error">請輸入地址</div>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="result">搜尋中...</div>';
+
+            try {
+                const url = `${CONFIG.APIS.NOMINATIM}/search?format=json&q=${encodeURIComponent(address)}&limit=3&accept-language=zh-TW,zh,en`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data && data.length > 0) {
+                    const result = data[0];
+                    resultDiv.innerHTML = `
+                        <div class="result">
+                            <h4>✅ 搜尋成功！</h4>
+                            <p><strong>地址：</strong>${result.display_name}</p>
+                            <p><strong>座標：</strong>${result.lat}, ${result.lon}</p>
+                            <p><strong>類型：</strong>${result.type || '未知'}</p>
+                            <details>
+                                <summary>完整回應資料</summary>
+                                <pre>${JSON.stringify(result, null, 2)}</pre>
+                            </details>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = '<div class="error">❌ 找不到該地址</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ 錯誤：${error.message}</div>`;
+            }
+        }
+
+        function testGeolocation() {
+            const resultDiv = document.getElementById('geolocation-result');
+            
+            if (!navigator.geolocation) {
+                resultDiv.innerHTML = '<div class="error">❌ 瀏覽器不支援定位功能</div>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="result">定位中...</div>';
+
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    // Try reverse geocoding
+                    try {
+                        const url = `${CONFIG.APIS.NOMINATIM}/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=zh-TW,zh,en`;
+                        const response = await fetch(url);
+                        const data = await response.json();
+                        
+                        resultDiv.innerHTML = `
+                            <div class="result">
+                                <h4>✅ 定位成功！</h4>
+                                <p><strong>座標：</strong>${lat.toFixed(6)}, ${lng.toFixed(6)}</p>
+                                <p><strong>精確度：</strong>${position.coords.accuracy} 公尺</p>
+                                <p><strong>地址：</strong>${data.display_name || '無法取得地址'}</p>
+                            </div>
+                        `;
+                    } catch (error) {
+                        resultDiv.innerHTML = `
+                            <div class="result">
+                                <h4>✅ 定位成功！</h4>
+                                <p><strong>座標：</strong>${lat.toFixed(6)}, ${lng.toFixed(6)}</p>
+                                <p><strong>精確度：</strong>${position.coords.accuracy} 公尺</p>
+                                <p><em>無法取得地址資訊</em></p>
+                            </div>
+                        `;
+                    }
+                },
+                (error) => {
+                    let errorMsg = '定位失敗';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMsg = '使用者拒絕定位權限';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMsg = '無法取得位置資訊';
+                            break;
+                        case error.TIMEOUT:
+                            errorMsg = '定位請求逾時';
+                            break;
+                    }
+                    resultDiv.innerHTML = `<div class="error">❌ ${errorMsg}</div>`;
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 60000
+                }
+            );
+        }
+
+        async function testRestaurantSearch() {
+            const lat = parseFloat(document.getElementById('lat-test').value);
+            const lng = parseFloat(document.getElementById('lng-test').value);
+            const resultDiv = document.getElementById('restaurant-result');
+
+            if (isNaN(lat) || isNaN(lng)) {
+                resultDiv.innerHTML = '<div class="error">請輸入有效的座標</div>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="result">搜尋中...</div>';
+
+            try {
+                const radius = CONFIG.SEARCH_RADIUS;
+                const latDelta = radius / 111320;
+                const lngDelta = radius / (111320 * Math.cos(lat * Math.PI / 180));
+                
+                const south = lat - latDelta;
+                const north = lat + latDelta;
+                const west = lng - lngDelta;
+                const east = lng + lngDelta;
+
+                const query = `
+                [out:json][timeout:15];
+                (
+                  node["amenity"="restaurant"](${south},${west},${north},${east});
+                  node["amenity"="fast_food"](${south},${west},${north},${east});
+                  node["amenity"="cafe"](${south},${west},${north},${east});
+                );
+                out;
+                `;
+
+                const response = await fetch(CONFIG.APIS.OVERPASS, {
+                    method: 'POST',
+                    body: query,
+                    headers: { 'Content-Type': 'text/plain' }
+                });
+
+                const data = await response.json();
+                const restaurants = data.elements.filter(element => element.tags && element.tags.name);
+
+                if (restaurants.length > 0) {
+                    let html = `<div class="result"><h4>✅ 找到 ${restaurants.length} 家餐廳！</h4><ul>`;
+                    restaurants.slice(0, 10).forEach(r => {
+                        const distance = calculateDistance(lat, lng, r.lat, r.lon);
+                        html += `<li><strong>${r.tags.name}</strong> - ${r.tags.amenity} (${(distance/1000).toFixed(1)}km)</li>`;
+                    });
+                    html += '</ul>';
+                    if (restaurants.length > 10) {
+                        html += `<p><em>還有 ${restaurants.length - 10} 家餐廳...</em></p>`;
+                    }
+                    html += '</div>';
+                    resultDiv.innerHTML = html;
+                } else {
+                    resultDiv.innerHTML = '<div class="error">❌ 附近沒有找到餐廳</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ 錯誤：${error.message}</div>`;
+            }
+        }
+
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371; // Earth's radius in kilometers
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c * 1000; // Return distance in meters
+        }
+
+        function testMap() {
+            const mapContainer = document.getElementById('map-container');
+            const resultDiv = document.getElementById('map-result');
+            
+            try {
+                // Clear existing map
+                if (testMap) {
+                    testMap.remove();
+                }
+
+                // Create new map
+                testMap = L.map(mapContainer).setView([25.0478, 121.5168], 16);
+
+                // Add tile layer
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(testMap);
+
+                // Add marker
+                const marker = L.marker([25.0478, 121.5168]).addTo(testMap);
+                marker.bindPopup('台北車站').openPopup();
+
+                resultDiv.innerHTML = '<div class="result">✅ 地圖載入成功！</div>';
+
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ 地圖載入失敗：${error.message}</div>`;
+            }
+        }
+
+        // Auto-test on page load
+        window.onload = function() {
+            console.log('測試頁面已載入');
+        };
+    </script>
+</body>
+</html>

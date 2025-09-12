@@ -1,15 +1,18 @@
 # 🍽️ 晚餐選擇器 (Random Dinner Selector)
 
-一個幫助你隨機選擇附近餐廳的網頁應用程式！輸入你的位置和用餐時間，我們會找到附近營業中的餐廳並隨機推薦一家。
+一個幫助你隨機選擇附近餐廳的網頁應用程式！輸入你的位置和用餐時間，我們會找到附近餐廳並隨機推薦一家。
+
+**🔓 完全免費！無需任何 API 金鑰！** 使用 OpenStreetMap 和開源技術實現。
 
 ## ✨ 功能特色
 
-- 📍 **智慧定位**：輸入地址自動定位附近餐廳
-- 🕒 **時間過濾**：根據用餐時間篩選營業中的餐廳
+- 📍 **智慧定位**：輸入地址或使用瀏覽器定位功能
+- 🕒 **時間過濾**：根據用餐時間篩選可能營業的餐廳
 - 🎲 **隨機選擇**：酷炫的輪盤動畫隨機推薦餐廳
-- 🗺️ **地圖整合**：桌面版顯示地圖，手機版提供 Google Maps 連結
+- 🗺️ **地圖整合**：使用 OpenStreetMap 顯示位置，支援 Google Maps 連結
 - 📱 **響應式設計**：完美支援桌面和手機介面
 - 🎨 **流暢動畫**：精美的使用者介面和互動體驗
+- 🔓 **完全免費**：無需註冊或 API 金鑰，基於開源技術
 
 ## 🚀 快速開始
 
@@ -20,20 +23,9 @@ git clone https://github.com/your-username/Random-Choose-Eating.git
 cd Random-Choose-Eating
 ```
 
-### 2. 設定 Google Maps API
+### 2. 直接使用 - 無需設定！
 
-1. 前往 [Google Cloud Console](https://console.cloud.google.com/)
-2. 建立新專案或選擇現有專案
-3. 啟用以下 API：
-   - Maps JavaScript API
-   - Places API
-   - Geocoding API
-4. 建立 API 金鑰並設定使用限制（建議限制網域）
-5. 複製 `config.example.js` 為 `config.js`：
-   ```bash
-   cp config.example.js config.js
-   ```
-6. 在 `config.js` 中替換 `YOUR_API_KEY_HERE` 為你的 API 金鑰
+由於使用開源 API，你可以直接開始使用，無需任何設定步驟！
 
 ### 3. 本地測試
 
@@ -60,16 +52,16 @@ php -S localhost:8000
 2. 登入 [Cloudflare Pages](https://pages.cloudflare.com/)
 3. 點選「建立專案」→「連接到 Git」
 4. 選擇你的儲存庫
-5. 在「環境變數」中設定：
-   - `GOOGLE_MAPS_API_KEY`: 你的 Google Maps API 金鑰
+5. 無需設定任何環境變數！
 6. 點選「儲存並部署」
 
 ### 方法二：直接上傳
 
-1. 在 `config.js` 中設定你的 API 金鑰
-2. 將所有檔案打包成 ZIP
-3. 在 Cloudflare Pages 中選擇「直接上傳」
-4. 上傳 ZIP 檔案並部署
+1. 將所有檔案打包成 ZIP
+2. 在 Cloudflare Pages 中選擇「直接上傳」
+3. 上傳 ZIP 檔案並部署
+
+**🎉 就這麼簡單！無需設定 API 金鑰或環境變數！**
 
 ## 📁 專案結構
 
@@ -107,9 +99,13 @@ Random-Choose-Eating/
 ## 🔧 技術規格
 
 - **前端**: HTML5, CSS3, JavaScript (ES6+)
-- **API**: Google Maps JavaScript API, Places API, Geocoding API  
+- **地圖**: Leaflet.js + OpenStreetMap 瓦片
+- **資料 API**: 
+  - Nominatim API (OpenStreetMap 地理編碼)
+  - Overpass API (OpenStreetMap 資料查詢)
 - **部署**: 靜態網站（支援 Cloudflare Pages, Netlify, Vercel 等）
 - **相容性**: 支援現代瀏覽器（Chrome, Firefox, Safari, Edge）
+- **費用**: 完全免費，無 API 配額限制
 
 ## 📱 響應式設計
 
@@ -119,14 +115,19 @@ Random-Choose-Eating/
 
 ## 🐛 常見問題
 
-### API 相關
-- **地圖無法載入**: 檢查 API 金鑰是否正確設定
-- **搜尋無結果**: 確認 Places API 已啟用
-- **定位失敗**: 檢查 Geocoding API 權限
+### 網路連線相關
+- **地圖無法載入**: 檢查網路連線是否正常
+- **搜尋無結果**: 確認網路可以存取外部 API (Nominatim, Overpass)
+- **定位失敗**: 確認瀏覽器允許定位權限，或手動輸入地址
 
 ### 使用問題  
-- **找不到餐廳**: 嘗試調整時間或搜尋半徑
-- **頁面載入慢**: 檢查網路連線和 API 配額
+- **找不到餐廳**: 嘗試調整時間或搜尋不同地點
+- **頁面載入慢**: 檢查網路連線，Overpass API 有時會比較慢
+- **餐廳資料不準確**: 資料來源為 OpenStreetMap，可能不如 Google 完整
+
+### 技術問題
+- **CORS 錯誤**: 使用本地伺服器而非直接開啟 HTML 檔案
+- **API 超時**: 網路較慢時可能需要等待較長時間
 
 ## 🤝 貢獻
 
@@ -138,4 +139,8 @@ MIT License
 
 ## 🙏 致謝
 
-感謝 Google Maps API 提供地圖和地點搜尋服務
+- 感謝 **OpenStreetMap** 社群提供免費的地圖資料
+- 感謝 **Nominatim** 提供免費的地理編碼服務  
+- 感謝 **Overpass API** 提供 OpenStreetMap 資料查詢服務
+- 感謝 **Leaflet.js** 提供優秀的地圖展示庫
+- 感謝所有貢獻 OpenStreetMap 資料的志願者們

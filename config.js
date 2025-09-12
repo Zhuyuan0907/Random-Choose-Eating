@@ -1,12 +1,7 @@
-// Google Maps API Configuration
-// This file handles both local development and production deployment
+// Configuration for Restaurant Selector App
+// No API keys required - uses free OpenSource APIs
 
 const CONFIG = {
-    // Your Google Maps API Key
-    // For local development: Replace 'YOUR_API_KEY_HERE' with your actual API key
-    // For Cloudflare Pages: Set GOOGLE_MAPS_API_KEY environment variable
-    GOOGLE_MAPS_API_KEY: typeof process !== 'undefined' && process.env?.GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY_HERE',
-    
     // Search radius in meters (default: 2000m = 2km)
     SEARCH_RADIUS: 2000,
     
@@ -25,12 +20,35 @@ const CONFIG = {
     
     // Restaurant search preferences
     SEARCH: {
-        // Types of places to search for
-        PLACE_TYPES: ['restaurant', 'meal_takeaway', 'food'],
-        // Minimum rating threshold (0-5, 0 = no filter)
-        MIN_RATING: 0,
+        // Types of places to search for (OpenStreetMap amenity types)
+        PLACE_TYPES: ['restaurant', 'fast_food', 'cafe', 'food_court'],
         // Maximum results to process
-        MAX_RESULTS: 20
+        MAX_RESULTS: 20,
+        // Search timeout in seconds
+        TIMEOUT: 25
+    },
+    
+    // API endpoints (free and open)
+    APIS: {
+        // Nominatim for geocoding (address search)
+        NOMINATIM: 'https://nominatim.openstreetmap.org',
+        // Overpass API for OpenStreetMap data queries
+        OVERPASS: 'https://overpass-api.de/api/interpreter',
+        // Alternative Overpass APIs (in case main one is down)
+        OVERPASS_ALTERNATIVES: [
+            'https://overpass.kumi.systems/api/interpreter',
+            'https://z.overpass-api.de/api/interpreter'
+        ]
+    },
+    
+    // Map configuration
+    MAP: {
+        // Default zoom level
+        ZOOM: 16,
+        // Tile server for OpenStreetMap
+        TILE_SERVER: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        // Attribution text
+        ATTRIBUTION: '© OpenStreetMap contributors'
     }
 };
 
