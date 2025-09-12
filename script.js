@@ -802,7 +802,7 @@ out center;`;
                     距離 Mozilla Community Space ${(restaurant.distance/1000).toFixed(1)}km
                 </div>
                 <button class="btn btn-primary" onclick="
-                    window.open('https://www.google.com/maps/place/${restaurant.lat},${restaurant.lng}/@${restaurant.lat},${restaurant.lng},17z', '_blank')
+                    window.open('https://www.google.com/maps/search/${encodeURIComponent(restaurant.name)}/@${restaurant.lat},${restaurant.lng},17z', '_blank')
                 " style="font-size: 0.9rem;">
                     在 Google Maps 中查看
                 </button>
@@ -817,8 +817,8 @@ out center;`;
         const lng = this.selectedRestaurant.lng;
         const name = encodeURIComponent(this.selectedRestaurant.name);
         
-        // 使用座標直接定位到餐廳位置，避免搜尋結果列表
-        const url = `https://www.google.com/maps/place/${lat},${lng}/@${lat},${lng},17z`;
+        // 使用餐廳名稱搜尋，但限制在附近範圍，更容易找到餐廳資訊
+        const url = `https://www.google.com/maps/search/${name}/@${lat},${lng},17z`;
         window.open(url, '_blank');
     }
 
