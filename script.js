@@ -65,9 +65,15 @@ class SITCONRestaurantSelector {
         peopleButtons.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
-                const count = parseInt(btn.dataset.count);
-                if (count) {
-                    this.setPeopleCount(count);
+                const countValue = btn.dataset.count;
+                
+                if (countValue === 'ricky') {
+                    this.handleRickySpecial();
+                } else {
+                    const count = parseInt(countValue);
+                    if (count) {
+                        this.setPeopleCount(count);
+                    }
                 }
             });
         });
@@ -110,6 +116,200 @@ class SITCONRestaurantSelector {
         if (activeBtn) {
             activeBtn.classList.add('active');
         }
+    }
+
+    handleRickySpecial() {
+        console.log('🐙 Ricky 專屬海底撈模式啟動！');
+        
+        // Set people count to 4 (reasonable for hot pot)
+        this.peopleCount = 4;
+        const peopleInput = document.getElementById('people-count');
+        if (peopleInput) {
+            peopleInput.value = '4';
+        }
+        
+        // Update button state
+        document.querySelectorAll('.people-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        const rickyBtn = document.querySelector('.ricky-special');
+        if (rickyBtn) {
+            rickyBtn.classList.add('active');
+        }
+        
+        // Start special search for hot pot restaurants
+        this.isRickyMode = true;
+        this.startRickySpecialSearch();
+    }
+
+    async startRickySpecialSearch() {
+        if (this.isProcessing) return;
+        
+        console.log('🐙 為 Ricky 尋找海底撈...');
+        this.isProcessing = true;
+        this.showLoading('people-loading');
+
+        try {
+            // Show search step
+            this.showStep('search');
+            this.updateSearchStatus('正在為 Ricky 尋找海底撈...');
+            
+            // Search for Haidilao (海底撈) specifically
+            const haidilaoRestaurants = await this.findHaidilaoRestaurants();
+            
+            if (haidilaoRestaurants.length === 0) {
+                throw new Error('附近沒有找到海底撈，為 Ricky 感到遺憾 😢');
+            }
+
+            this.restaurants = haidilaoRestaurants;
+            
+            // Automatically select the closest Haidilao
+            this.updateSearchStatus('已為 Ricky 找到海底撈！🎉');
+            await this.performRickySelection();
+            
+        } catch (error) {
+            console.error('Ricky 專屬搜尋失敗:', error);
+            this.showError(error.message || '為 Ricky 尋找海底撈時出現問題，請稍後再試');
+        } finally {
+            this.isProcessing = false;
+            this.hideLoading('people-loading');
+        }
+    }
+
+    async findHaidilaoRestaurants() {
+        const radius = 5000; // 5km search radius for Haidilao
+        const lat = this.fixedLocation.lat;
+        const lng = this.fixedLocation.lng;
+        
+        // Calculate bounding box
+        const latDelta = radius / 111320;
+        const lngDelta = radius / (111320 * Math.cos(lat * Math.PI / 180));
+        
+        const south = lat - latDelta;
+        const north = lat + latDelta;
+        const west = lng - lngDelta;
+        const east = lng + lngDelta;
+
+        // Search specifically for Haidilao
+        const query = `
+        [out:json][timeout:25];
+        (
+          node["amenity"="restaurant"]["name"~"海底撈|Haidilao|haidilao",i](${south},${west},${north},${east});
+          way["amenity"="restaurant"]["name"~"海底撈|Haidilao|haidilao",i](${south},${west},${north},${east});
+          relation["amenity"="restaurant"]["name"~"海底撈|Haidilao|haidilao",i](${south},${west},${north},${east});
+        );
+        out center;
+        `;
+
+        // Try multiple Overpass APIs
+        for (let apiIndex = 0; apiIndex < this.overpassAPIs.length; apiIndex++) {
+            const overpassAPI = this.overpassAPIs[apiIndex];
+            console.log(`🐙 Trying to find Haidilao via: ${overpassAPI}`);
+            
+            try {
+                const response = await fetch(overpassAPI, {
+                    method: 'POST',
+                    body: query,
+                    headers: {
+                        'Content-Type': 'text/plain',
+                        'User-Agent': 'SITCONRestaurantSelector/1.0-RickyMode'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log(`🐙 Found ${data.elements.length} potential Haidilao locations`);
+                
+                const haidilaoRestaurants = data.elements.map(element => {
+                    // Get coordinates
+                    let elementLat, elementLng;
+                    if (element.lat && element.lon) {
+                        elementLat = element.lat;
+                        elementLng = element.lon;
+                    } else if (element.center) {
+                        elementLat = element.center.lat;
+                        elementLng = element.center.lon;
+                    } else {
+                        return null;
+                    }
+
+                    // Calculate distance
+                    const distance = this.calculateDistance(lat, lng, elementLat, elementLng);
+
+                    return {
+                        id: element.id,
+                        name: element.tags?.name || '海底撈火鍋',
+                        amenity: 'restaurant',
+                        cuisine: 'hot_pot',
+                        address: element.tags?.['addr:full'] || element.tags?.['addr:street'] || '',
+                        phone: element.tags?.phone || '',
+                        website: element.tags?.website || '',
+                        opening_hours: element.tags?.opening_hours || '',
+                        lat: elementLat,
+                        lng: elementLng,
+                        distance: distance,
+                        isRickySpecial: true
+                    };
+                }).filter(restaurant => restaurant !== null)
+                  .sort((a, b) => a.distance - b.distance);
+
+                if (haidilaoRestaurants.length > 0) {
+                    console.log(`🐙 Successfully found ${haidilaoRestaurants.length} Haidilao restaurants for Ricky`);
+                    return haidilaoRestaurants;
+                }
+                
+            } catch (error) {
+                console.warn(`🐙 Overpass API ${overpassAPI} failed for Ricky:`, error.message);
+                continue;
+            }
+        }
+        
+        return [];
+    }
+
+    async performRickySelection() {
+        console.log('🐙 為 Ricky 選擇最佳海底撈位置');
+        
+        const closestHaidilao = this.restaurants[0]; // Already sorted by distance
+        this.selectedRestaurant = closestHaidilao;
+        
+        // Show immediate result for Ricky
+        setTimeout(() => {
+            this.showRickyFinalResult(closestHaidilao);
+        }, 1000);
+    }
+
+    showRickyFinalResult(restaurant) {
+        console.log('🐙 顯示 Ricky 的海底撈結果');
+        
+        // Show result step
+        this.showStep('result');
+        
+        // Populate result data with Ricky special styling
+        const finalRestaurantEl = document.getElementById('final-restaurant');
+        if (finalRestaurantEl) {
+            const distance = (restaurant.distance / 1000).toFixed(1);
+            
+            finalRestaurantEl.innerHTML = `
+                <div class="name" style="background: linear-gradient(135deg, #ff6b6b, #ff8e53); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">🐙 ${restaurant.name}</div>
+                <div class="details">
+                    <div class="detail" style="background: rgba(255, 107, 107, 0.1);">🔥 Ricky 專屬海底撈</div>
+                    <div class="detail">📍 距離 Mozilla Community Space ${distance} 公里</div>
+                    <div class="detail">👥 適合 ${this.peopleCount} 人火鍋聚餐</div>
+                    <div class="detail">🍲 火鍋料理</div>
+                    ${restaurant.address ? `<div class="detail">📮 ${restaurant.address}</div>` : ''}
+                    ${restaurant.phone ? `<div class="detail">📞 ${restaurant.phone}</div>` : ''}
+                    <div class="detail" style="color: #ff6b6b; font-weight: bold;">🎉 Ricky 應該會很開心！</div>
+                </div>
+            `;
+        }
+        
+        // Initialize map
+        this.initializeMap(restaurant);
     }
 
     getPeopleGroupType() {
@@ -213,21 +413,18 @@ class SITCONRestaurantSelector {
         const west = lng - lngDelta;
         const east = lng + lngDelta;
 
-        // Overpass QL query to find restaurants
+        // Overpass QL query to find restaurants (excluding bubble tea and beverage shops)
         const query = `
         [out:json][timeout:25];
         (
           node["amenity"="restaurant"](${south},${west},${north},${east});
-          node["amenity"="fast_food"](${south},${west},${north},${east});
-          node["amenity"="cafe"](${south},${west},${north},${east});
+          node["amenity"="fast_food"][!"cuisine"~"bubble_tea|tea|coffee|drinks"](${south},${west},${north},${east});
           node["amenity"="food_court"](${south},${west},${north},${east});
           way["amenity"="restaurant"](${south},${west},${north},${east});
-          way["amenity"="fast_food"](${south},${west},${north},${east});
-          way["amenity"="cafe"](${south},${west},${north},${east});
+          way["amenity"="fast_food"][!"cuisine"~"bubble_tea|tea|coffee|drinks"](${south},${west},${north},${east});
           way["amenity"="food_court"](${south},${west},${north},${east});
           relation["amenity"="restaurant"](${south},${west},${north},${east});
-          relation["amenity"="fast_food"](${south},${west},${north},${east});
-          relation["amenity"="cafe"](${south},${west},${north},${east});
+          relation["amenity"="fast_food"][!"cuisine"~"bubble_tea|tea|coffee|drinks"](${south},${west},${north},${east});
           relation["amenity"="food_court"](${south},${west},${north},${east});
         );
         out center;
@@ -284,7 +481,33 @@ class SITCONRestaurantSelector {
                         lng: elementLng,
                         distance: distance
                     };
-                }).filter(restaurant => restaurant !== null && restaurant.name !== '未知餐廳')
+                }).filter(restaurant => {
+                    if (!restaurant || restaurant.name === '未知餐廳') return false;
+                    
+                    // Filter out bubble tea and beverage shops more strictly
+                    const name = restaurant.name.toLowerCase();
+                    const cuisine = restaurant.cuisine.toLowerCase();
+                    
+                    // Exclude bubble tea, coffee, tea, and beverage-focused places
+                    const beverageKeywords = [
+                        'bubble tea', 'bubble_tea', '珍珠奶茶', '手搖飲', '飲料',
+                        'tea', '茶', 'coffee', '咖啡', '星巴克', 'starbucks',
+                        '茶湯會', '50嵐', 'coco', '迷克夏', '清心', '茶葉蛋',
+                        'drinks', 'beverage', '飲品', '奶茶', '果汁', 'juice'
+                    ];
+                    
+                    // Check if it's primarily a beverage shop
+                    const isBeverage = beverageKeywords.some(keyword => 
+                        name.includes(keyword) || cuisine.includes(keyword)
+                    );
+                    
+                    // Only include restaurants and proper food places
+                    const isProperRestaurant = restaurant.amenity === 'restaurant' || 
+                        restaurant.amenity === 'food_court' ||
+                        (restaurant.amenity === 'fast_food' && !isBeverage);
+                    
+                    return isProperRestaurant && !isBeverage;
+                })
                   .sort((a, b) => a.distance - b.distance)
                   .slice(0, window.CONFIG?.SEARCH?.MAX_RESULTS || 30);
 
@@ -451,17 +674,29 @@ class SITCONRestaurantSelector {
             iframe.allowFullscreen = true;
             iframe.referrerPolicy = 'no-referrer-when-downgrade';
             
+            // Always use the restaurant name and address for better map accuracy
+            const restaurantName = encodeURIComponent(restaurant.name);
+            const restaurantAddress = restaurant.address ? encodeURIComponent(restaurant.address) : '';
+            
             // Check if we have a Google Maps API key
             const apiKey = window.CONFIG?.MAP?.GOOGLE_MAPS_API_KEY;
             
             if (apiKey && apiKey.trim()) {
                 // Use Google Maps embed with directions from Mozilla Community Space to restaurant
-                const embedUrl = `https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${mozillaLat},${mozillaLng}&destination=${restaurantLat},${restaurantLng}&mode=walking&language=zh-TW`;
+                const embedUrl = `https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${mozillaLat},${mozillaLng}&destination=${restaurantName}&mode=walking&language=zh-TW`;
                 iframe.src = embedUrl;
             } else {
-                // Use basic map view centered on the restaurant (no API key required)
-                const staticMapUrl = `https://maps.google.com/maps?width=100%25&height=400&hl=zh&q=${restaurantLat},${restaurantLng}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
-                iframe.src = staticMapUrl;
+                // Use search-based embed for better accuracy (no API key required)
+                let searchQuery = restaurantName;
+                if (restaurantAddress) {
+                    searchQuery += ` ${restaurantAddress}`;
+                } else {
+                    // Fallback to coordinates if no address
+                    searchQuery = `${restaurantLat},${restaurantLng}`;
+                }
+                
+                const searchUrl = `https://maps.google.com/maps?width=100%25&height=400&hl=zh&q=${encodeURIComponent(searchQuery)}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
+                iframe.src = searchUrl;
             }
             
             // Add the iframe to the map container
@@ -515,6 +750,7 @@ class SITCONRestaurantSelector {
         this.selectedRestaurant = null;
         this.peopleCount = 8;
         this.isProcessing = false;
+        this.isRickyMode = false; // Clear Ricky mode
         
         // Reset people count input
         const peopleInput = document.getElementById('people-count');
@@ -931,7 +1167,33 @@ class RestaurantSelector {
                         lng: elementLng,
                         distance: distance
                     };
-                }).filter(restaurant => restaurant !== null && restaurant.name !== '未知餐廳')
+                }).filter(restaurant => {
+                    if (!restaurant || restaurant.name === '未知餐廳') return false;
+                    
+                    // Filter out bubble tea and beverage shops more strictly
+                    const name = restaurant.name.toLowerCase();
+                    const cuisine = restaurant.cuisine.toLowerCase();
+                    
+                    // Exclude bubble tea, coffee, tea, and beverage-focused places
+                    const beverageKeywords = [
+                        'bubble tea', 'bubble_tea', '珍珠奶茶', '手搖飲', '飲料',
+                        'tea', '茶', 'coffee', '咖啡', '星巴克', 'starbucks',
+                        '茶湯會', '50嵐', 'coco', '迷克夏', '清心', '茶葉蛋',
+                        'drinks', 'beverage', '飲品', '奶茶', '果汁', 'juice'
+                    ];
+                    
+                    // Check if it's primarily a beverage shop
+                    const isBeverage = beverageKeywords.some(keyword => 
+                        name.includes(keyword) || cuisine.includes(keyword)
+                    );
+                    
+                    // Only include restaurants and proper food places
+                    const isProperRestaurant = restaurant.amenity === 'restaurant' || 
+                        restaurant.amenity === 'food_court' ||
+                        (restaurant.amenity === 'fast_food' && !isBeverage);
+                    
+                    return isProperRestaurant && !isBeverage;
+                })
                   .sort((a, b) => a.distance - b.distance)
                   .slice(0, window.CONFIG?.SEARCH?.MAX_RESULTS || 30);
 

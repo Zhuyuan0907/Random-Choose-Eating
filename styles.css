@@ -249,6 +249,21 @@ body {
     transform: translateY(-2px);
 }
 
+.people-btn.ricky-special {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+    color: white;
+    border: 2px solid #ff6b6b;
+    font-weight: bold;
+}
+
+.people-btn.ricky-special:hover,
+.people-btn.ricky-special.active {
+    background: linear-gradient(135deg, #ff5252 0%, #ff7043 100%);
+    border-color: #ff5252;
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+}
+
 .time-selector input[type="time"] {
     padding: 1rem;
     border: 2px solid #e2e8f0;
