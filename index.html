@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>晚餐選擇器 - 隨機決定今天吃什麼</title>
+    <meta name="description" content="讓我們幫你隨機選擇附近的餐廳！輸入地址和用餐時間，找到開店的餐廳並隨機推薦。">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🍽️ 晚餐選擇器</h1>
+            <p class="subtitle">不知道吃什麼嗎？讓我們幫你決定！</p>
+        </header>
+
+        <main class="main">
+            <!-- Step 1: Address Input -->
+            <section class="step" id="step-address">
+                <div class="step-content">
+                    <h2>📍 你現在在哪裡？</h2>
+                    <div class="input-group">
+                        <input type="text" id="address-input" placeholder="輸入你的地址或位置" autocomplete="street-address">
+                        <button id="address-submit" class="btn btn-primary">確認位置</button>
+                    </div>
+                    <div class="loading" id="address-loading" style="display: none;">
+                        <div class="spinner"></div>
+                        <span>正在定位中...</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 2: Time Selection -->
+            <section class="step" id="step-time" style="display: none;">
+                <div class="step-content">
+                    <h2>🕒 你想幾點吃飯？</h2>
+                    <div class="time-selector">
+                        <input type="time" id="meal-time" value="18:00">
+                        <div class="time-options">
+                            <button class="time-btn" data-time="17:30">5:30 PM</button>
+                            <button class="time-btn" data-time="18:00">6:00 PM</button>
+                            <button class="time-btn" data-time="18:30">6:30 PM</button>
+                            <button class="time-btn" data-time="19:00">7:00 PM</button>
+                            <button class="time-btn" data-time="19:30">7:30 PM</button>
+                            <button class="time-btn" data-time="20:00">8:00 PM</button>
+                        </div>
+                        <button id="time-submit" class="btn btn-primary">開始尋找餐廳</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 3: Restaurant Search -->
+            <section class="step" id="step-search" style="display: none;">
+                <div class="step-content">
+                    <h2>🔍 正在尋找附近的餐廳</h2>
+                    <div class="search-status">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <span id="search-status-text">搜尋中...</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 4: Random Selection -->
+            <section class="step" id="step-select" style="display: none;">
+                <div class="step-content">
+                    <h2>🎲 讓我們隨機選擇一家餐廳</h2>
+                    <div class="restaurant-roulette">
+                        <div class="roulette-container">
+                            <div class="restaurant-card" id="current-restaurant">
+                                <div class="restaurant-name">準備中...</div>
+                                <div class="restaurant-info"></div>
+                            </div>
+                        </div>
+                        <div class="selection-controls">
+                            <button id="start-random" class="btn btn-primary btn-large">開始選擇！</button>
+                            <button id="reroll" class="btn btn-secondary" style="display: none;">不喜歡？再來一次</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 5: Result -->
+            <section class="step" id="step-result" style="display: none;">
+                <div class="step-content">
+                    <h2>🎉 就決定是這家了！</h2>
+                    <div class="result-container">
+                        <div class="restaurant-result" id="final-restaurant">
+                            <!-- Restaurant details will be populated here -->
+                        </div>
+                        <div class="map-container" id="map-container">
+                            <!-- Map will be loaded here on desktop -->
+                        </div>
+                        <div class="result-actions">
+                            <button id="view-on-maps" class="btn btn-primary" target="_blank">
+                                📍 在 Google Maps 查看
+                            </button>
+                            <button id="start-over" class="btn btn-secondary">重新開始</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Error Message -->
+            <section class="error-section" id="error-section" style="display: none;">
+                <div class="error-content">
+                    <h2>😅 哎呀，出了點問題</h2>
+                    <p id="error-message">請稍後再試或檢查您的網路連線</p>
+                    <button id="retry-btn" class="btn btn-primary">重試</button>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>Made with ❤️ for food lovers</p>
+        </footer>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+    <script>
+        // Dynamically load Google Maps API with the configured key
+        function loadGoogleMapsAPI() {
+            const apiKey = window.CONFIG?.GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY_HERE';
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap`;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
+        
+        // Load API when DOM is ready
+        document.addEventListener('DOMContentLoaded', loadGoogleMapsAPI);
+    </script>
+</body>
+</html>

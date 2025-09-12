@@ -1,0 +1,39 @@
+{
+  "name": "random-dinner-selector",
+  "version": "1.0.0",
+  "description": "一個幫助你隨機選擇附近餐廳的網頁應用程式",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python -m http.server 8000",
+    "build": "echo 'Static site - no build step required'",
+    "start": "npm run dev"
+  },
+  "keywords": [
+    "restaurant",
+    "food",
+    "random",
+    "selector",
+    "dinner",
+    "maps",
+    "places",
+    "taiwan",
+    "javascript"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/Random-Choose-Eating.git"
+  },
+  "homepage": "https://your-username.github.io/Random-Choose-Eating",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "devDependencies": {},
+  "dependencies": {},
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}
