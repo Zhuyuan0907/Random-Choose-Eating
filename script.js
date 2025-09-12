@@ -389,9 +389,11 @@ out center;`;
     }
 
     async findNearbyRestaurants() {
-        const radius = window.CONFIG?.SEARCH_RADIUS || 2000;
+        const radius = window.CONFIG?.SEARCH_RADIUS || 800;
         const lat = this.fixedLocation.lat;
         const lng = this.fixedLocation.lng;
+        
+        console.log(`尋找 ${radius}m 範圍內的餐廳...`);
         
         const latDelta = radius / 111320;
         const lngDelta = radius / (111320 * Math.cos(lat * Math.PI / 180));
@@ -401,14 +403,13 @@ out center;`;
         const west = lng - lngDelta;
         const east = lng + lngDelta;
 
-        const query = `[out:json][timeout:30];
+        // 簡化搜索 - 只搜索有名字的餐廳和小吃店
+        const query = `[out:json][timeout:25];
 (
-  node["amenity"="restaurant"](${south},${west},${north},${east});
-  node["amenity"="fast_food"](${south},${west},${north},${east});
-  node["amenity"="food_court"](${south},${west},${north},${east});
-  way["amenity"="restaurant"](${south},${west},${north},${east});
-  way["amenity"="fast_food"](${south},${west},${north},${east});
-  way["amenity"="food_court"](${south},${west},${north},${east});
+  node["amenity"="restaurant"]["name"](${south},${west},${north},${east});
+  node["amenity"="fast_food"]["name"](${south},${west},${north},${east});
+  way["amenity"="restaurant"]["name"](${south},${west},${north},${east});
+  way["amenity"="fast_food"]["name"](${south},${west},${north},${east});
 );
 out center;`;
 
@@ -434,7 +435,7 @@ out center;`;
                 }
 
                 const data = await response.json();
-                console.log(`Found ${data.elements.length} elements from Overpass`);
+                console.log(`Found ${data.elements.length} 個有名字的餐廳/小吃店`);
                 
                 const restaurants = data.elements.map(element => {
                     let elementLat, elementLng;
@@ -449,13 +450,21 @@ out center;`;
                     }
 
                     const distance = this.calculateDistance(lat, lng, elementLat, elementLng);
+                    
+                    // 只要距離在範圍內就算有效
+                    if (distance > radius) {
+                        return null;
+                    }
+
+                    const name = element.tags?.name || element.tags?.['name:zh'] || element.tags?.['name:en'] || '';
+                    if (!name.trim()) return null;
 
                     return {
                         id: element.id,
-                        name: element.tags?.name || element.tags?.['name:zh'] || element.tags?.['name:en'] || '未知餐廳',
+                        name: name,
                         amenity: element.tags?.amenity || 'restaurant',
                         cuisine: element.tags?.cuisine || '',
-                        address: element.tags?.['addr:full'] || element.tags?.['addr:street'] || '',
+                        address: element.tags?.['addr:full'] || element.tags?.['addr:street'] || element.tags?.['addr:housenumber'] || '',
                         phone: element.tags?.phone || '',
                         website: element.tags?.website || '',
                         opening_hours: element.tags?.opening_hours || '',
@@ -464,33 +473,27 @@ out center;`;
                         distance: distance
                     };
                 }).filter(restaurant => {
-                    if (!restaurant || restaurant.name === '未知餐廳') return false;
+                    if (!restaurant) return false;
                     
                     const name = restaurant.name.toLowerCase();
-                    const cuisine = restaurant.cuisine.toLowerCase();
                     
-                    const beverageKeywords = [
-                        'bubble tea', 'bubble_tea', '珍珠奶茶', '手搖飲', '飲料',
-                        'tea', '茶', 'coffee', '咖啡', '星巴克', 'starbucks',
-                        '茶湯會', '50嵐', 'coco', '迷克夏', '清心', '茶葉蛋',
-                        'drinks', 'beverage', '飲品', '奶茶', '果汁', 'juice'
+                    // 簡化篩選 - 只排除明顯的飲料店
+                    const excludeKeywords = [
+                        'starbucks', '星巴克', '50嵐', 'coco', '茶湯會', 'milkshop', '迷客夏',
+                        '清心', '麻古', '老虎堂', 'bubble tea', '手搖飲', '珍珠奶茶'
                     ];
                     
-                    const isBeverage = beverageKeywords.some(keyword => 
-                        name.includes(keyword) || cuisine.includes(keyword)
+                    const shouldExclude = excludeKeywords.some(keyword => 
+                        name.includes(keyword)
                     );
                     
-                    const isProperRestaurant = restaurant.amenity === 'restaurant' || 
-                        restaurant.amenity === 'food_court' ||
-                        (restaurant.amenity === 'fast_food' && !isBeverage);
-                    
-                    return isProperRestaurant && !isBeverage;
+                    return !shouldExclude;
                 })
-                  .sort((a, b) => a.distance - b.distance)
-                  .slice(0, window.CONFIG?.SEARCH?.MAX_RESULTS || 30);
+                  .sort((a, b) => a.distance - b.distance);
 
                 if (restaurants.length > 0) {
-                    console.log(`Successfully found ${restaurants.length} restaurants`);
+                    console.log(`篩選後找到 ${restaurants.length} 家餐廳`);
+                    console.log('前5家:', restaurants.slice(0, 5).map(r => `${r.name} (${Math.round(r.distance)}m)`).join(', '));
                     return restaurants;
                 }
                 
@@ -506,30 +509,19 @@ out center;`;
     }
 
     getFallbackRestaurants() {
+        console.log('使用備用餐廳列表...');
         const mozillaLat = this.fixedLocation.lat;
         const mozillaLng = this.fixedLocation.lng;
         
+        // 提供台北車站/西門町附近真實存在的餐廳
         const fallbackRestaurants = [
             {
                 id: 'fallback-1',
-                name: '鼎泰豐 信義店',
-                amenity: 'restaurant',
-                cuisine: 'taiwanese',
-                address: '台北市信義區松高路12號',
-                phone: '',
-                website: '',
-                opening_hours: '',
-                lat: 25.0368,
-                lng: 121.5654,
-                distance: this.calculateDistance(mozillaLat, mozillaLng, 25.0368, 121.5654)
-            },
-            {
-                id: 'fallback-2', 
                 name: '金峰滷肉飯',
                 amenity: 'restaurant',
                 cuisine: 'taiwanese',
                 address: '台北市中正區羅斯福路一段10號',
-                phone: '',
+                phone: '02-2396-0808',
                 website: '',
                 opening_hours: '',
                 lat: 25.0425,
@@ -537,11 +529,11 @@ out center;`;
                 distance: this.calculateDistance(mozillaLat, mozillaLng, 25.0425, 121.5188)
             },
             {
-                id: 'fallback-3',
+                id: 'fallback-2',
                 name: '阜杭豆漿',
                 amenity: 'restaurant', 
                 cuisine: 'taiwanese',
-                address: '台北市中正區忠孝東路一段108號',
+                address: '台北市中正區忠孝東路一段108號2樓',
                 phone: '',
                 website: '',
                 opening_hours: '',
@@ -550,20 +542,47 @@ out center;`;
                 distance: this.calculateDistance(mozillaLat, mozillaLng, 25.0451, 121.5249)
             },
             {
-                id: 'fallback-4',
-                name: '欣葉日本料理',
-                amenity: 'restaurant',
-                cuisine: 'japanese',
-                address: '台北市中正區仁愛路二段69號',
+                id: 'fallback-3',
+                name: '台北車站美食街',
+                amenity: 'food_court',
+                cuisine: 'various',
+                address: '台北市中正區北平西路3號',
                 phone: '',
                 website: '',
                 opening_hours: '',
-                lat: 25.0394,
-                lng: 121.5244,
-                distance: this.calculateDistance(mozillaLat, mozillaLng, 25.0394, 121.5244)
+                lat: 25.0420,
+                lng: 121.5170,
+                distance: this.calculateDistance(mozillaLat, mozillaLng, 25.0420, 121.5170)
+            },
+            {
+                id: 'fallback-4',
+                name: '老天祿滷味',
+                amenity: 'fast_food',
+                cuisine: 'taiwanese',
+                address: '台北市萬華區西門街19號',
+                phone: '',
+                website: '',
+                opening_hours: '',
+                lat: 25.0422,
+                lng: 121.5081,
+                distance: this.calculateDistance(mozillaLat, mozillaLng, 25.0422, 121.5081)
+            },
+            {
+                id: 'fallback-5',
+                name: '寧夏夜市',
+                amenity: 'food_court',
+                cuisine: 'taiwanese',
+                address: '台北市大同區寧夏路',
+                phone: '',
+                website: '',
+                opening_hours: '',
+                lat: 25.0563,
+                lng: 121.5155,
+                distance: this.calculateDistance(mozillaLat, mozillaLng, 25.0563, 121.5155)
             }
         ];
         
+        console.log('Fallback restaurants:', fallbackRestaurants.map(r => `${r.name} (${Math.round(r.distance)}m)`).join(', '));
         return fallbackRestaurants.sort((a, b) => a.distance - b.distance);
     }
 
@@ -686,10 +705,41 @@ out center;`;
         
         try {
             mapContainer.innerHTML = '';
+            console.log('正在初始化地圖...');
             
-            const restaurantName = encodeURIComponent(restaurant.name);
-            const restaurantAddress = restaurant.address ? encodeURIComponent(restaurant.address) : '';
+            // 使用更簡單且不容易被攔截的地圖嵌入方式
+            const lat = restaurant.lat;
+            const lng = restaurant.lng;
+            const restaurantName = restaurant.name;
             
+            // 創建地圖容器內容
+            const mapContent = document.createElement('div');
+            mapContent.style.cssText = `
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+                border-radius: 16px;
+                overflow: hidden;
+            `;
+            
+            // 添加地圖標題
+            const mapHeader = document.createElement('div');
+            mapHeader.style.cssText = `
+                padding: 1rem;
+                background: rgba(119, 181, 90, 0.1);
+                border-bottom: 1px solid rgba(119, 181, 90, 0.2);
+                text-align: center;
+                font-weight: 600;
+                color: #4a5568;
+            `;
+            mapHeader.innerHTML = `📍 ${restaurantName}`;
+            
+            // 創建 iframe 容器
+            const iframeContainer = document.createElement('div');
+            iframeContainer.style.cssText = `flex: 1; position: relative;`;
+            
+            // 創建 iframe
             const iframe = document.createElement('iframe');
             iframe.width = '100%';
             iframe.height = '100%';
@@ -698,40 +748,80 @@ out center;`;
             iframe.allowFullscreen = true;
             iframe.referrerPolicy = 'no-referrer-when-downgrade';
             
-            const apiKey = window.CONFIG?.MAP?.GOOGLE_MAPS_API_KEY;
+            // 使用最兼容的嵌入方式
+            const embedUrl = `https://www.google.com/maps?ll=${lat},${lng}&z=17&t=m&hl=zh-TW&gl=TW&mapclient=embed&q=${encodeURIComponent(restaurantName)}@${lat},${lng}`;
+            iframe.src = embedUrl;
             
-            if (apiKey && apiKey.trim()) {
-                const embedUrl = `https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${this.fixedLocation.lat},${this.fixedLocation.lng}&destination=${restaurantName}&mode=walking&language=zh-TW`;
-                iframe.src = embedUrl;
-            } else {
-                let searchQuery = restaurantName;
-                if (restaurantAddress) {
-                    searchQuery += ` ${restaurantAddress}`;
-                } else {
-                    searchQuery = `${restaurant.lat},${restaurant.lng}`;
-                }
-                
-                const searchUrl = `https://maps.google.com/maps?width=100%25&height=400&hl=zh&q=${encodeURIComponent(searchQuery)}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
-                iframe.src = searchUrl;
-            }
+            // 添加載入錯誤處理
+            iframe.onerror = () => {
+                console.warn('Google Maps iframe 載入失敗');
+                this.showMapFallback(iframeContainer, restaurant);
+            };
             
-            mapContainer.appendChild(iframe);
-            console.log('Google Maps embedded successfully');
+            // 組裝地圖
+            iframeContainer.appendChild(iframe);
+            mapContent.appendChild(mapHeader);
+            mapContent.appendChild(iframeContainer);
+            
+            // 添加底部按鈕
+            const mapFooter = document.createElement('div');
+            mapFooter.style.cssText = `
+                padding: 1rem;
+                background: rgba(119, 181, 90, 0.05);
+                border-top: 1px solid rgba(119, 181, 90, 0.1);
+                text-align: center;
+            `;
+            
+            const openMapBtn = document.createElement('button');
+            openMapBtn.className = 'btn btn-primary';
+            openMapBtn.style.cssText = `font-size: 0.9rem; padding: 0.5rem 1rem;`;
+            openMapBtn.innerHTML = '🗺️ 在 Google Maps 開啟';
+            openMapBtn.onclick = () => {
+                const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}&query_place_id=${encodeURIComponent(restaurantName)}`;
+                window.open(url, '_blank');
+            };
+            
+            mapFooter.appendChild(openMapBtn);
+            mapContent.appendChild(mapFooter);
+            
+            mapContainer.appendChild(mapContent);
+            console.log('地圖嵌入成功');
             
         } catch (error) {
-            console.warn('Google Maps initialization failed:', error);
-            
-            mapContainer.innerHTML = `
-                <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f0f0f0; border-radius: 16px; color: #666; text-align: center; padding: 2rem;">
-                    <div>
-                        <p style="margin-bottom: 1rem;">地圖載入失敗</p>
-                        <button class="btn btn-primary" onclick="window.open('https://www.google.com/maps/search/?api=1&query=${restaurant.lat},${restaurant.lng}', '_blank')">
-                            在 Google Maps 中查看
-                        </button>
-                    </div>
-                </div>
-            `;
+            console.warn('地圖初始化失敗:', error);
+            this.showMapFallback(mapContainer, restaurant);
         }
+    }
+    
+    showMapFallback(container, restaurant) {
+        container.innerHTML = `
+            <div style="
+                display: flex; 
+                flex-direction: column;
+                align-items: center; 
+                justify-content: center; 
+                height: 100%; 
+                background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%); 
+                border-radius: 16px; 
+                color: #666; 
+                text-align: center; 
+                padding: 2rem;
+                gap: 1rem;
+            ">
+                <div style="font-size: 2rem;">📍</div>
+                <div style="font-weight: 600; color: #4a5568; margin-bottom: 0.5rem;">
+                    ${restaurant.name}
+                </div>
+                <div style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">
+                    距離 Mozilla Community Space ${(restaurant.distance/1000).toFixed(1)}km
+                </div>
+                <button class="btn btn-primary" onclick="
+                    window.open('https://www.google.com/maps/search/?api=1&query=${restaurant.lat},${restaurant.lng}', '_blank')
+                " style="font-size: 0.9rem;">
+                    🗺️ 在 Google Maps 中查看
+                </button>
+            </div>
+        `;
     }
 
     openGoogleMaps() {
