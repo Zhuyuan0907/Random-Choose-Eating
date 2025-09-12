@@ -10,9 +10,17 @@ class RestaurantSelector {
         this.isMobile = window.innerWidth < 768;
         this.selectedRestaurant = null;
         
-        // API endpoints
-        this.nominatimAPI = 'https://nominatim.openstreetmap.org';
-        this.overpassAPI = 'https://overpass-api.de/api/interpreter';
+        // API endpoints with alternatives
+        this.nominatimAPIs = [
+            'https://nominatim.openstreetmap.org',
+            'https://nominatim.osm.org'
+        ];
+        this.overpassAPIs = [
+            'https://overpass-api.de/api/interpreter',
+            'https://overpass.kumi.systems/api/interpreter'
+        ];
+        this.currentNominatimAPI = 0;
+        this.currentOverpassAPI = 0;
         
         this.init();
     }
@@ -37,7 +45,6 @@ class RestaurantSelector {
         // Address input
         const addressInput = document.getElementById('address-input');
         const addressSubmit = document.getElementById('address-submit');
-        const useCurrentLocation = document.getElementById('use-current-location');
         
         addressInput?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
@@ -46,7 +53,6 @@ class RestaurantSelector {
         });
         
         addressSubmit?.addEventListener('click', () => this.submitAddress());
-        useCurrentLocation?.addEventListener('click', () => this.getCurrentLocation());
 
         // Time selection
         const timeInput = document.getElementById('meal-time');
@@ -90,80 +96,6 @@ class RestaurantSelector {
         retryBtn?.addEventListener('click', () => this.restart());
     }
 
-    async getCurrentLocation() {
-        if (!navigator.geolocation) {
-            this.showError('您的瀏覽器不支援定位功能');
-            return;
-        }
-
-        this.showLoading('address-loading');
-
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                
-                try {
-                    // Reverse geocoding to get address
-                    const address = await this.reverseGeocode(lat, lng);
-                    this.userLocation = {
-                        lat: lat,
-                        lng: lng,
-                        address: address
-                    };
-                    
-                    const addressInput = document.getElementById('address-input');
-                    addressInput.value = address;
-                    
-                    this.hideLoading('address-loading');
-                    this.showStep('time');
-                } catch (error) {
-                    this.hideLoading('address-loading');
-                    this.showError('無法獲取地址資訊');
-                    console.error('Reverse geocoding error:', error);
-                }
-            },
-            (error) => {
-                this.hideLoading('address-loading');
-                let errorMessage = '定位失敗';
-                switch(error.code) {
-                    case error.PERMISSION_DENIED:
-                        errorMessage = '請允許定位權限後再試';
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        errorMessage = '無法獲取您的位置';
-                        break;
-                    case error.TIMEOUT:
-                        errorMessage = '定位超時，請稍後再試';
-                        break;
-                }
-                this.showError(errorMessage);
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 300000 // 5 minutes
-            }
-        );
-    }
-
-    async reverseGeocode(lat, lng) {
-        const url = `${this.nominatimAPI}/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=zh-TW,zh,en`;
-        
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
-            
-            if (data && data.display_name) {
-                return data.display_name;
-            } else {
-                return `緯度 ${lat.toFixed(4)}, 經度 ${lng.toFixed(4)}`;
-            }
-        } catch (error) {
-            console.error('Reverse geocoding error:', error);
-            return `緯度 ${lat.toFixed(4)}, 經度 ${lng.toFixed(4)}`;
-        }
-    }
 
     async submitAddress() {
         const addressInput = document.getElementById('address-input');
@@ -191,26 +123,92 @@ class RestaurantSelector {
     }
 
     async geocodeAddress(address) {
-        const url = `${this.nominatimAPI}/search?format=json&q=${encodeURIComponent(address)}&limit=1&accept-language=zh-TW,zh,en`;
+        // Try multiple variations of the address
+        const addressVariations = [
+            address,
+            `${address}, 台灣`,
+            `${address}, Taiwan`,
+            address.replace(/縣|市|區|鎮|里/g, ''), // Remove common location suffixes
+            address.replace(/路|街|巷|號/g, '') // Remove street indicators
+        ];
+
+        for (let apiIndex = 0; apiIndex < this.nominatimAPIs.length; apiIndex++) {
+            const nominatimAPI = this.nominatimAPIs[apiIndex];
+            
+            for (const addressVar of addressVariations) {
+                try {
+                    console.log(`Trying: ${addressVar} on ${nominatimAPI}`);
+                    
+                    const url = `${nominatimAPI}/search?format=json&q=${encodeURIComponent(addressVar)}&limit=3&accept-language=zh-TW,zh,en&countrycodes=tw`;
+                    
+                    const response = await fetch(url, {
+                        headers: {
+                            'User-Agent': 'RestaurantSelector/1.0'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data && data.length > 0) {
+                        const result = data[0];
+                        console.log(`Found: ${result.display_name}`);
+                        
+                        return {
+                            lat: parseFloat(result.lat),
+                            lng: parseFloat(result.lon),
+                            address: result.display_name
+                        };
+                    }
+                    
+                    // Wait a bit between requests to be nice to the API
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    
+                } catch (error) {
+                    console.warn(`Failed ${addressVar} on ${nominatimAPI}:`, error.message);
+                    continue;
+                }
+            }
+        }
         
+        // If all attempts failed, try a broader search without country restriction
         try {
-            const response = await fetch(url);
+            console.log('Trying broader search...');
+            const url = `${this.nominatimAPIs[0]}/search?format=json&q=${encodeURIComponent(address)}&limit=5&accept-language=zh-TW,zh,en`;
+            
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'RestaurantSelector/1.0'
+                }
+            });
+            
             const data = await response.json();
             
             if (data && data.length > 0) {
-                const result = data[0];
+                // Prefer results in Taiwan
+                const taiwanResult = data.find(r => 
+                    r.display_name.includes('台灣') || 
+                    r.display_name.includes('Taiwan') ||
+                    r.display_name.includes('臺灣')
+                );
+                
+                const result = taiwanResult || data[0];
+                console.log(`Broader search found: ${result.display_name}`);
+                
                 return {
                     lat: parseFloat(result.lat),
                     lng: parseFloat(result.lon),
                     address: result.display_name
                 };
-            } else {
-                throw new Error('Address not found');
             }
         } catch (error) {
-            console.error('Geocoding error:', error);
-            throw error;
+            console.error('Broader search failed:', error);
         }
+        
+        throw new Error('找不到該地址，請嘗試更具體的地名，例如：台北車站、高雄火車站');
     }
 
     updateTimeButtons() {
@@ -309,54 +307,74 @@ class RestaurantSelector {
         out center;
         `;
 
-        try {
-            const response = await fetch(this.overpassAPI, {
-                method: 'POST',
-                body: query,
-                headers: {
-                    'Content-Type': 'text/plain'
-                }
-            });
-
-            const data = await response.json();
+        // Try multiple Overpass APIs
+        for (let apiIndex = 0; apiIndex < this.overpassAPIs.length; apiIndex++) {
+            const overpassAPI = this.overpassAPIs[apiIndex];
+            console.log(`Trying Overpass API: ${overpassAPI}`);
             
-            return data.elements.map(element => {
-                // Get coordinates
-                let elementLat, elementLng;
-                if (element.lat && element.lon) {
-                    elementLat = element.lat;
-                    elementLng = element.lon;
-                } else if (element.center) {
-                    elementLat = element.center.lat;
-                    elementLng = element.center.lon;
-                } else {
-                    return null;
+            try {
+                const response = await fetch(overpassAPI, {
+                    method: 'POST',
+                    body: query,
+                    headers: {
+                        'Content-Type': 'text/plain',
+                        'User-Agent': 'RestaurantSelector/1.0'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
                 }
 
-                // Calculate distance
-                const distance = this.calculateDistance(lat, lng, elementLat, elementLng);
+                const data = await response.json();
+                console.log(`Found ${data.elements.length} elements from Overpass`);
+                
+                const restaurants = data.elements.map(element => {
+                    // Get coordinates
+                    let elementLat, elementLng;
+                    if (element.lat && element.lon) {
+                        elementLat = element.lat;
+                        elementLng = element.lon;
+                    } else if (element.center) {
+                        elementLat = element.center.lat;
+                        elementLng = element.center.lon;
+                    } else {
+                        return null;
+                    }
 
-                return {
-                    id: element.id,
-                    name: element.tags?.name || element.tags?.['name:zh'] || '未知餐廳',
-                    amenity: element.tags?.amenity || 'restaurant',
-                    cuisine: element.tags?.cuisine || '',
-                    address: element.tags?.['addr:full'] || element.tags?.['addr:street'] || '',
-                    phone: element.tags?.phone || '',
-                    website: element.tags?.website || '',
-                    opening_hours: element.tags?.opening_hours || '',
-                    lat: elementLat,
-                    lng: elementLng,
-                    distance: distance
-                };
-            }).filter(restaurant => restaurant !== null)
-              .sort((a, b) => a.distance - b.distance)
-              .slice(0, window.CONFIG?.SEARCH?.MAX_RESULTS || 20);
+                    // Calculate distance
+                    const distance = this.calculateDistance(lat, lng, elementLat, elementLng);
 
-        } catch (error) {
-            console.error('Overpass API error:', error);
-            throw error;
+                    return {
+                        id: element.id,
+                        name: element.tags?.name || element.tags?.['name:zh'] || element.tags?.['name:en'] || '未知餐廳',
+                        amenity: element.tags?.amenity || 'restaurant',
+                        cuisine: element.tags?.cuisine || '',
+                        address: element.tags?.['addr:full'] || element.tags?.['addr:street'] || '',
+                        phone: element.tags?.phone || '',
+                        website: element.tags?.website || '',
+                        opening_hours: element.tags?.opening_hours || '',
+                        lat: elementLat,
+                        lng: elementLng,
+                        distance: distance
+                    };
+                }).filter(restaurant => restaurant !== null && restaurant.name !== '未知餐廳')
+                  .sort((a, b) => a.distance - b.distance)
+                  .slice(0, window.CONFIG?.SEARCH?.MAX_RESULTS || 20);
+
+                if (restaurants.length > 0) {
+                    console.log(`Successfully found ${restaurants.length} restaurants`);
+                    return restaurants;
+                }
+                
+            } catch (error) {
+                console.warn(`Overpass API ${overpassAPI} failed:`, error.message);
+                continue;
+            }
         }
+        
+        // If all APIs failed, throw error
+        throw new Error('無法連接到餐廳資料庫，請稍後再試');
     }
 
     calculateDistance(lat1, lng1, lat2, lng2) {

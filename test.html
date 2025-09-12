@@ -123,26 +123,59 @@
             resultDiv.innerHTML = '<div class="result">搜尋中...</div>';
 
             try {
-                const url = `${CONFIG.APIS.NOMINATIM}/search?format=json&q=${encodeURIComponent(address)}&limit=3&accept-language=zh-TW,zh,en`;
-                const response = await fetch(url);
-                const data = await response.json();
+                // Use the same improved geocoding logic as the main app
+                const addressVariations = [
+                    address,
+                    `${address}, 台灣`,
+                    `${address}, Taiwan`
+                ];
 
-                if (data && data.length > 0) {
-                    const result = data[0];
-                    resultDiv.innerHTML = `
-                        <div class="result">
-                            <h4>✅ 搜尋成功！</h4>
-                            <p><strong>地址：</strong>${result.display_name}</p>
-                            <p><strong>座標：</strong>${result.lat}, ${result.lon}</p>
-                            <p><strong>類型：</strong>${result.type || '未知'}</p>
-                            <details>
-                                <summary>完整回應資料</summary>
-                                <pre>${JSON.stringify(result, null, 2)}</pre>
-                            </details>
-                        </div>
-                    `;
-                } else {
-                    resultDiv.innerHTML = '<div class="error">❌ 找不到該地址</div>';
+                const nominatimAPIs = [
+                    'https://nominatim.openstreetmap.org',
+                    'https://nominatim.osm.org'
+                ];
+
+                let found = false;
+                for (const nominatimAPI of nominatimAPIs) {
+                    for (const addressVar of addressVariations) {
+                        try {
+                            const url = `${nominatimAPI}/search?format=json&q=${encodeURIComponent(addressVar)}&limit=3&accept-language=zh-TW,zh,en&countrycodes=tw`;
+                            
+                            const response = await fetch(url, {
+                                headers: { 'User-Agent': 'RestaurantSelector/1.0' }
+                            });
+                            
+                            const data = await response.json();
+
+                            if (data && data.length > 0) {
+                                const result = data[0];
+                                resultDiv.innerHTML = `
+                                    <div class="result">
+                                        <h4>✅ 搜尋成功！</h4>
+                                        <p><strong>搜尋詞：</strong>${addressVar}</p>
+                                        <p><strong>API：</strong>${nominatimAPI}</p>
+                                        <p><strong>地址：</strong>${result.display_name}</p>
+                                        <p><strong>座標：</strong>${result.lat}, ${result.lon}</p>
+                                        <p><strong>類型：</strong>${result.type || '未知'}</p>
+                                        <details>
+                                            <summary>完整回應資料</summary>
+                                            <pre>${JSON.stringify(result, null, 2)}</pre>
+                                        </details>
+                                    </div>
+                                `;
+                                found = true;
+                                break;
+                            }
+                        } catch (error) {
+                            console.warn(`Failed ${addressVar} on ${nominatimAPI}:`, error);
+                            continue;
+                        }
+                    }
+                    if (found) break;
+                }
+
+                if (!found) {
+                    resultDiv.innerHTML = '<div class="error">❌ 所有搜尋嘗試都失敗了</div>';
                 }
             } catch (error) {
                 resultDiv.innerHTML = `<div class="error">❌ 錯誤：${error.message}</div>`;
