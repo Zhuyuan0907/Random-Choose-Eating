@@ -511,12 +511,15 @@ body {
     }
     
     .result-container {
-        grid-template-columns: 1fr 1fr;
-        align-items: start;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        max-width: 900px;
+        margin: 0 auto;
     }
     
     .map-container {
-        height: 400px;
+        height: 350px;
+        width: 100%;
     }
     
     .input-group {
@@ -525,12 +528,10 @@ body {
     }
     
     .result-actions {
-        grid-column: 1 / -1;
         justify-content: center;
     }
     
     .restart-corner {
-        grid-column: 1 / -1;
         display: flex;
         justify-content: flex-end;
         margin-top: 1rem;

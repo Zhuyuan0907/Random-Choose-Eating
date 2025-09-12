@@ -768,26 +768,7 @@ out center;`;
             mapContent.appendChild(mapHeader);
             mapContent.appendChild(iframeContainer);
             
-            // 添加底部按鈕
-            const mapFooter = document.createElement('div');
-            mapFooter.style.cssText = `
-                padding: 1rem;
-                background: rgba(119, 181, 90, 0.05);
-                border-top: 1px solid rgba(119, 181, 90, 0.1);
-                text-align: center;
-            `;
-            
-            const openMapBtn = document.createElement('button');
-            openMapBtn.className = 'btn btn-primary';
-            openMapBtn.style.cssText = `font-size: 0.9rem; padding: 0.5rem 1rem;`;
-            openMapBtn.innerHTML = '在 Google Maps 開啟';
-            openMapBtn.onclick = () => {
-                const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-                window.open(url, '_blank');
-            };
-            
-            mapFooter.appendChild(openMapBtn);
-            mapContent.appendChild(mapFooter);
+            // 移除底部按鈕，避免重複
             
             mapContainer.appendChild(mapContent);
             console.log('地圖嵌入成功');
@@ -821,7 +802,7 @@ out center;`;
                     距離 Mozilla Community Space ${(restaurant.distance/1000).toFixed(1)}km
                 </div>
                 <button class="btn btn-primary" onclick="
-                    window.open('https://www.google.com/maps/search/?api=1&query=${restaurant.lat},${restaurant.lng}', '_blank')
+                    window.open('https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.name)}&center=${restaurant.lat},${restaurant.lng}', '_blank')
                 " style="font-size: 0.9rem;">
                     在 Google Maps 中查看
                 </button>
@@ -836,8 +817,8 @@ out center;`;
         const lng = this.selectedRestaurant.lng;
         const name = encodeURIComponent(this.selectedRestaurant.name);
         
-        // 使用統一的搜索格式，直接定位到餐廳
-        const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+        // 使用餐廳名稱搜索，更容易找到正確的店家
+        const url = `https://www.google.com/maps/search/?api=1&query=${name}&query_place_id=&center=${lat},${lng}`;
         window.open(url, '_blank');
     }
 
