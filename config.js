@@ -2,8 +2,8 @@
 // No API keys required - uses free OpenSource APIs
 
 const CONFIG = {
-    // Search radius in meters (default: 2000m = 2km)
-    SEARCH_RADIUS: 2000,
+    // Search radius in meters (reduced to 800m for nearby walkable restaurants)
+    SEARCH_RADIUS: 800,
     
     // Fixed location: Mozilla Community Space Taipei (台北市中正區重慶南路一段99號)
     FIXED_LOCATION: {
