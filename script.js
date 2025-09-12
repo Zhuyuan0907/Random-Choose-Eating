@@ -1,4 +1,4 @@
-// Restaurant Selector App - OpenSource Version
+// Restaurant Selector App - Streamlined Version
 class RestaurantSelector {
     constructor() {
         this.map = null;
@@ -6,7 +6,7 @@ class RestaurantSelector {
         this.selectedTime = '18:00';
         this.restaurants = [];
         this.currentStep = 'address';
-        this.isSpinning = false;
+        this.isProcessing = false;
         this.isMobile = window.innerWidth < 768;
         this.selectedRestaurant = null;
         
@@ -19,15 +19,13 @@ class RestaurantSelector {
             'https://overpass-api.de/api/interpreter',
             'https://overpass.kumi.systems/api/interpreter'
         ];
-        this.currentNominatimAPI = 0;
-        this.currentOverpassAPI = 0;
         
         this.init();
     }
 
     init() {
         this.bindEvents();
-        this.updateTimeDisplay();
+        this.initializeTimeSelector();
         
         // Check if we're on mobile and adjust interface
         if (this.isMobile) {
@@ -49,61 +47,33 @@ class RestaurantSelector {
         if (addressInput) {
             addressInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
-                    this.submitAddress();
+                    this.startFoodSearch();
                 }
             });
         }
         
         if (addressSubmit) {
-            addressSubmit.addEventListener('click', () => this.submitAddress());
+            addressSubmit.addEventListener('click', () => this.startFoodSearch());
         }
 
-        // Time selection
-        const timeInput = document.getElementById('meal-time');
-        const timeButtons = document.querySelectorAll('.time-btn');
-        const timeSubmit = document.getElementById('time-submit');
-
-        if (timeInput) {
-            timeInput.addEventListener('change', (e) => {
+        // Time selection in header
+        const timeSelector = document.getElementById('meal-time-header');
+        if (timeSelector) {
+            timeSelector.addEventListener('change', (e) => {
                 this.selectedTime = e.target.value;
-                this.updateTimeButtons();
             });
-        }
-
-        timeButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const time = e.target.dataset.time;
-                this.selectedTime = time;
-                if (timeInput) timeInput.value = time;
-                this.updateTimeButtons();
-            });
-        });
-
-        if (timeSubmit) {
-            timeSubmit.addEventListener('click', () => this.searchRestaurants());
-        }
-
-        // Restaurant selection
-        const startRandom = document.getElementById('start-random');
-        const reroll = document.getElementById('reroll');
-
-        if (startRandom) {
-            startRandom.addEventListener('click', () => this.startRandomSelection());
-        }
-        if (reroll) {
-            reroll.addEventListener('click', () => this.startRandomSelection());
         }
 
         // Result actions
-        const viewOnOSM = document.getElementById('view-on-osm');
         const viewOnGoogle = document.getElementById('view-on-google');
+        const reroll = document.getElementById('reroll');
         const startOver = document.getElementById('start-over');
 
-        if (viewOnOSM) {
-            viewOnOSM.addEventListener('click', () => this.openOSMMap());
-        }
         if (viewOnGoogle) {
             viewOnGoogle.addEventListener('click', () => this.openGoogleMaps());
+        }
+        if (reroll) {
+            reroll.addEventListener('click', () => this.rerollRestaurant());
         }
         if (startOver) {
             startOver.addEventListener('click', () => this.restart());
@@ -116,7 +86,16 @@ class RestaurantSelector {
         }
     }
 
-    async submitAddress() {
+    initializeTimeSelector() {
+        const timeSelector = document.getElementById('meal-time-header');
+        if (timeSelector) {
+            this.selectedTime = timeSelector.value || '18:00';
+        }
+    }
+
+    async startFoodSearch() {
+        if (this.isProcessing) return;
+        
         const addressInput = document.getElementById('address-input');
         if (!addressInput) return;
         
@@ -127,19 +106,44 @@ class RestaurantSelector {
             return;
         }
 
+        this.isProcessing = true;
         this.showLoading('address-loading');
 
         try {
+            // Step 1: Geocode address
+            this.updateLoadingText('正在定位...');
             const location = await this.geocodeAddress(address);
             this.userLocation = location;
             
-            this.hideLoading('address-loading');
-            this.showStep('time');
+            // Step 2: Search restaurants
+            this.showStep('search');
+            this.updateSearchStatus('正在搜尋附近餐廳...');
+            const restaurants = await this.findNearbyRestaurants();
+            
+            if (restaurants.length === 0) {
+                throw new Error('找不到附近的餐廳，請嘗試其他地點');
+            }
+
+            // Step 3: Filter by time
+            this.updateSearchStatus('正在篩選營業中餐廳...');
+            const openRestaurants = this.filterRestaurantsByTime(restaurants);
+            
+            if (openRestaurants.length === 0) {
+                throw new Error('找不到在此時間可能營業的餐廳，請嘗試其他時間');
+            }
+
+            this.restaurants = openRestaurants;
+            
+            // Step 4: Automatically select a restaurant with animation
+            this.updateSearchStatus('正在為你隨機選擇...');
+            await this.performRandomSelection();
             
         } catch (error) {
+            console.error('Food search error:', error);
+            this.showError(error.message || '搜尋過程中發生錯誤，請稍後再試');
+        } finally {
+            this.isProcessing = false;
             this.hideLoading('address-loading');
-            this.showError(error.message || '無法找到該地址，請檢查後重新輸入');
-            console.error('Geocoding error:', error);
         }
     }
 
@@ -151,9 +155,9 @@ class RestaurantSelector {
             address,
             `${address}, 台灣`,
             `${address}, Taiwan`,
-            address.replace(/縣|市|區|鎮|里/g, ''), // Remove common location suffixes
-            address.replace(/路|街|巷|號/g, '') // Remove street indicators
-        ];
+            address.replace(/縣|市|區|鎮|里/g, '').trim(),
+            address.replace(/路|街|巷|號/g, '').trim()
+        ].filter(addr => addr.length > 0);
 
         for (let apiIndex = 0; apiIndex < this.nominatimAPIs.length; apiIndex++) {
             const nominatimAPI = this.nominatimAPIs[apiIndex];
@@ -231,69 +235,7 @@ class RestaurantSelector {
             console.error('Broader search failed:', error);
         }
         
-        throw new Error('找不到該地址，請嘗試更具體的地名，例如：台北車站、高雄火車站');
-    }
-
-    updateTimeButtons() {
-        const timeButtons = document.querySelectorAll('.time-btn');
-        timeButtons.forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.time === this.selectedTime);
-        });
-    }
-
-    updateTimeDisplay() {
-        const now = new Date();
-        const currentHour = now.getHours();
-        
-        // Set default time based on current time
-        let defaultTime = '18:00';
-        if (currentHour >= 17) {
-            const nextHour = Math.min(currentHour + 1, 21);
-            defaultTime = `${nextHour.toString().padStart(2, '0')}:00`;
-        }
-        
-        this.selectedTime = defaultTime;
-        const timeInput = document.getElementById('meal-time');
-        if (timeInput) {
-            timeInput.value = defaultTime;
-        }
-        this.updateTimeButtons();
-    }
-
-    async searchRestaurants() {
-        if (!this.userLocation) {
-            this.showError('請先確認你的位置');
-            return;
-        }
-
-        this.showStep('search');
-        this.updateSearchStatus('正在搜尋附近餐廳...');
-
-        try {
-            const restaurants = await this.findNearbyRestaurants();
-            this.updateSearchStatus(`找到 ${restaurants.length} 家餐廳，正在篩選...`);
-            
-            if (restaurants.length === 0) {
-                this.showError('找不到附近的餐廳，請嘗試其他地點');
-                return;
-            }
-
-            // Simple filtering by time (basic assumption about operating hours)
-            const openRestaurants = this.filterRestaurantsByTime(restaurants);
-            
-            if (openRestaurants.length === 0) {
-                this.showError('找不到在此時間可能營業的餐廳，請嘗試其他時間');
-                return;
-            }
-
-            this.restaurants = openRestaurants;
-            this.showStep('select');
-            this.setupRestaurantRoulette();
-            
-        } catch (error) {
-            console.error('Restaurant search error:', error);
-            this.showError(error.message || '搜尋餐廳時發生錯誤，請稍後再試');
-        }
+        throw new Error('找不到該地址，請嘗試更具體的地名，例如：台北車站、高雄火車站、台中逢甲夜市');
     }
 
     async findNearbyRestaurants() {
@@ -383,7 +325,7 @@ class RestaurantSelector {
                     };
                 }).filter(restaurant => restaurant !== null && restaurant.name !== '未知餐廳')
                   .sort((a, b) => a.distance - b.distance)
-                  .slice(0, window.CONFIG?.SEARCH?.MAX_RESULTS || 20);
+                  .slice(0, window.CONFIG?.SEARCH?.MAX_RESULTS || 30);
 
                 if (restaurants.length > 0) {
                     console.log(`Successfully found ${restaurants.length} restaurants`);
@@ -413,7 +355,6 @@ class RestaurantSelector {
 
     filterRestaurantsByTime(restaurants) {
         const selectedTime = this.parseTime(this.selectedTime);
-        const now = new Date();
         
         return restaurants.filter(restaurant => {
             // If no opening hours data, assume it might be open
@@ -428,7 +369,6 @@ class RestaurantSelector {
 
     isRestaurantOpenBasic(openingHours, selectedTime) {
         // Very basic parsing of opening hours
-        // This is simplified - real parsing would be much more complex
         const hoursLower = openingHours.toLowerCase();
         
         // If it says 24/7 or always open
@@ -454,33 +394,20 @@ class RestaurantSelector {
         return hours * 60 + minutes; // Convert to minutes
     }
 
-    setupRestaurantRoulette() {
+    async performRandomSelection() {
+        // Show the roulette display
+        const rouletteDisplay = document.getElementById('roulette-display');
         const restaurantCard = document.getElementById('current-restaurant');
-        if (!restaurantCard) return;
         
-        const restaurantName = restaurantCard.querySelector('.restaurant-name');
-        const restaurantInfo = restaurantCard.querySelector('.restaurant-info');
-
-        if (restaurantName) {
-            restaurantName.textContent = `找到 ${this.restaurants.length} 家餐廳`;
+        if (rouletteDisplay) {
+            rouletteDisplay.style.display = 'block';
         }
-        if (restaurantInfo) {
-            restaurantInfo.textContent = '準備開始選擇...';
-        }
-    }
-
-    async startRandomSelection() {
-        if (this.isSpinning || this.restaurants.length === 0) return;
-
-        this.isSpinning = true;
-        const restaurantCard = document.getElementById('current-restaurant');
-        const startButton = document.getElementById('start-random');
-        const rerollButton = document.getElementById('reroll');
-
-        if (startButton) startButton.style.display = 'none';
-        if (rerollButton) rerollButton.style.display = 'none';
         
-        if (restaurantCard) restaurantCard.classList.add('spinning');
+        if (restaurantCard) {
+            restaurantCard.classList.add('spinning');
+        }
+
+        this.updateSearchStatus(`找到 ${this.restaurants.length} 家餐廳，正在選擇...`);
 
         // Show random restaurants during animation
         const animationDuration = window.CONFIG?.ANIMATION?.ROULETTE_DURATION || 2000;
@@ -511,7 +438,6 @@ class RestaurantSelector {
                             restaurantCard.classList.remove('highlighting');
                         }
                         this.showFinalResult(selectedRestaurant);
-                        this.isSpinning = false;
                     }, window.CONFIG?.ANIMATION?.HIGHLIGHT_DURATION || 1000);
                 }, 500);
             }
@@ -566,7 +492,7 @@ class RestaurantSelector {
                 <div class="detail">${amenityIcon} ${restaurant.amenity}</div>
                 <div class="detail">${cuisine}</div>
                 <div class="detail">${distance}</div>
-                <div class="detail">🕒 選擇時間: ${this.selectedTime}</div>
+                <div class="detail">🕒 選擇時間: ${this.formatTime(this.selectedTime)}</div>
                 ${restaurant.address ? `<div class="detail">📍 ${restaurant.address}</div>` : ''}
                 ${restaurant.phone ? `<div class="detail">📞 ${restaurant.phone}</div>` : ''}
             </div>
@@ -578,14 +504,27 @@ class RestaurantSelector {
         }
 
         this.showStep('result');
+    }
+
+    formatTime(timeString) {
+        const [hours, minutes] = timeString.split(':');
+        const hour = parseInt(hours);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${minutes} ${ampm}`;
+    }
+
+    async rerollRestaurant() {
+        if (this.restaurants.length === 0) return;
         
-        // Show reroll button after result
-        setTimeout(() => {
-            const rerollButton = document.getElementById('reroll');
-            if (rerollButton) {
-                rerollButton.style.display = 'inline-flex';
-            }
-        }, 1000);
+        // Go back to search step and perform new random selection
+        this.showStep('search');
+        this.updateSearchStatus('正在重新選擇...');
+        
+        // Wait a moment for visual feedback
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        await this.performRandomSelection();
     }
 
     initializeMap(lat, lng, restaurant) {
@@ -656,6 +595,13 @@ class RestaurantSelector {
         }
     }
 
+    updateLoadingText(text) {
+        const loadingSpan = document.querySelector('#address-loading span');
+        if (loadingSpan) {
+            loadingSpan.textContent = text;
+        }
+    }
+
     updateSearchStatus(message) {
         const statusText = document.getElementById('search-status-text');
         if (statusText) {
@@ -681,11 +627,9 @@ class RestaurantSelector {
     }
 
     restart() {
-        // Reset state
-        this.userLocation = null;
-        this.restaurants = [];
+        // Reset state but keep the found restaurants
         this.selectedRestaurant = null;
-        this.isSpinning = false;
+        this.isProcessing = false;
         
         // Clear map
         if (this.map) {
@@ -698,14 +642,6 @@ class RestaurantSelector {
         if (addressInput) {
             addressInput.value = '';
         }
-        this.updateTimeDisplay();
-        
-        // Reset buttons
-        const startButton = document.getElementById('start-random');
-        const rerollButton = document.getElementById('reroll');
-        
-        if (startButton) startButton.style.display = 'inline-flex';
-        if (rerollButton) rerollButton.style.display = 'none';
         
         // Show first step
         this.showStep('address');
@@ -716,16 +652,6 @@ class RestaurantSelector {
                 addressInput.focus();
             }
         }, 100);
-    }
-
-    openOSMMap() {
-        if (!this.selectedRestaurant) return;
-        
-        const lat = this.selectedRestaurant.lat;
-        const lng = this.selectedRestaurant.lng;
-        const osmUrl = `https://www.openstreetmap.org/#map=16/${lat}/${lng}`;
-        
-        window.open(osmUrl, '_blank');
     }
 
     openGoogleMaps() {

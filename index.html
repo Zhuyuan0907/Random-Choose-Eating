@@ -16,8 +16,25 @@
 <body>
     <div class="container">
         <header class="header">
-            <h1>🍽️ 晚餐選擇器</h1>
-            <p class="subtitle">不知道吃什麼嗎？讓我們幫你決定！</p>
+            <div class="header-content">
+                <div class="title-section">
+                    <h1>🍽️ 晚餐選擇器</h1>
+                    <p class="subtitle">不知道吃什麼嗎？讓我們幫你決定！</p>
+                </div>
+                <div class="time-selector-header">
+                    <label for="meal-time-header">🕒 用餐時間：</label>
+                    <select id="meal-time-header">
+                        <option value="17:30">5:30 PM</option>
+                        <option value="18:00" selected>6:00 PM</option>
+                        <option value="18:30">6:30 PM</option>
+                        <option value="19:00">7:00 PM</option>
+                        <option value="19:30">7:30 PM</option>
+                        <option value="20:00">8:00 PM</option>
+                        <option value="20:30">8:30 PM</option>
+                        <option value="21:00">9:00 PM</option>
+                    </select>
+                </div>
+            </div>
         </header>
 
         <main class="main">
@@ -26,68 +43,38 @@
                 <div class="step-content">
                     <h2>📍 你現在在哪裡？</h2>
                     <div class="input-group">
-                        <input type="text" id="address-input" placeholder="輸入你的地址，例如：台北車站、高雄車站" autocomplete="street-address">
-                        <button id="address-submit" class="btn btn-primary">確認位置</button>
+                        <input type="text" id="address-input" placeholder="輸入你的地址，例如：台北車站、高雄車站、台中逢甲夜市" autocomplete="street-address">
+                        <button id="address-submit" class="btn btn-primary btn-large">開始尋找晚餐！</button>
                     </div>
                     <div class="loading" id="address-loading" style="display: none;">
                         <div class="spinner"></div>
-                        <span>正在定位中...</span>
+                        <span>正在尋找附近餐廳...</span>
                     </div>
                 </div>
             </section>
 
-            <!-- Step 2: Time Selection -->
-            <section class="step" id="step-time" style="display: none;">
-                <div class="step-content">
-                    <h2>🕒 你想幾點吃飯？</h2>
-                    <div class="time-selector">
-                        <input type="time" id="meal-time" value="18:00">
-                        <div class="time-options">
-                            <button class="time-btn" data-time="17:30">5:30 PM</button>
-                            <button class="time-btn" data-time="18:00">6:00 PM</button>
-                            <button class="time-btn" data-time="18:30">6:30 PM</button>
-                            <button class="time-btn" data-time="19:00">7:00 PM</button>
-                            <button class="time-btn" data-time="19:30">7:30 PM</button>
-                            <button class="time-btn" data-time="20:00">8:00 PM</button>
-                        </div>
-                        <button id="time-submit" class="btn btn-primary">開始尋找餐廳</button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Step 3: Restaurant Search -->
+            <!-- Step 2: Restaurant Search -->
             <section class="step" id="step-search" style="display: none;">
                 <div class="step-content">
-                    <h2>🔍 正在尋找附近的餐廳</h2>
+                    <h2>🔍 正在為你隨機選擇餐廳</h2>
                     <div class="search-status">
                         <div class="loading">
                             <div class="spinner"></div>
                             <span id="search-status-text">搜尋中...</span>
                         </div>
                     </div>
-                </div>
-            </section>
-
-            <!-- Step 4: Random Selection -->
-            <section class="step" id="step-select" style="display: none;">
-                <div class="step-content">
-                    <h2>🎲 讓我們隨機選擇一家餐廳</h2>
-                    <div class="restaurant-roulette">
+                    <div class="restaurant-roulette" id="roulette-display" style="display: none;">
                         <div class="roulette-container">
                             <div class="restaurant-card" id="current-restaurant">
                                 <div class="restaurant-name">準備中...</div>
                                 <div class="restaurant-info"></div>
                             </div>
                         </div>
-                        <div class="selection-controls">
-                            <button id="start-random" class="btn btn-primary btn-large">開始選擇！</button>
-                            <button id="reroll" class="btn btn-secondary" style="display: none;">不喜歡？再來一次</button>
-                        </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Step 5: Result -->
+            <!-- Step 3: Result -->
             <section class="step" id="step-result" style="display: none;">
                 <div class="step-content">
                     <h2>🎉 就決定是這家了！</h2>
@@ -99,13 +86,11 @@
                             <!-- Map will be loaded here on desktop -->
                         </div>
                         <div class="result-actions">
-                            <button id="view-on-osm" class="btn btn-primary" target="_blank">
-                                📍 在 OpenStreetMap 查看
-                            </button>
                             <button id="view-on-google" class="btn btn-primary" target="_blank">
                                 🗺️ 在 Google Maps 查看
                             </button>
-                            <button id="start-over" class="btn btn-secondary">重新開始</button>
+                            <button id="reroll" class="btn btn-secondary">🎲 換一家試試</button>
+                            <button id="start-over" class="btn btn-tertiary">🏠 重新選地點</button>
                         </div>
                     </div>
                 </div>

@@ -24,9 +24,21 @@ body {
 
 /* Header */
 .header {
-    text-align: center;
     margin-bottom: 2rem;
     color: white;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.title-section {
+    flex: 1;
+    text-align: center;
 }
 
 .header h1 {
@@ -40,6 +52,32 @@ body {
     font-size: 1.1rem;
     opacity: 0.9;
     font-weight: 300;
+}
+
+.time-selector-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.time-selector-header label {
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.time-selector-header select {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    padding: 0.5rem;
+    color: #333;
+    font-family: inherit;
+    font-weight: 500;
 }
 
 /* Main Content */
@@ -125,6 +163,18 @@ body {
 
 .btn-secondary:hover {
     background: #edf2f7;
+    transform: translateY(-2px);
+}
+
+.btn-tertiary {
+    background: transparent;
+    color: #666;
+    border: 2px solid #e2e8f0;
+}
+
+.btn-tertiary:hover {
+    background: #f0f0f0;
+    color: #333;
     transform: translateY(-2px);
 }
 
@@ -379,6 +429,16 @@ body {
 @media (max-width: 767px) {
     .header h1 {
         font-size: 2rem;
+    }
+    
+    .header-content {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .time-selector-header {
+        order: 2;
+        justify-content: center;
     }
     
     .input-group {
