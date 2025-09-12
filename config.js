@@ -44,8 +44,8 @@ const CONFIG = {
         OVERPASS: 'https://overpass-api.de/api/interpreter',
         // Alternative Overpass APIs (in case main one is down)
         OVERPASS_ALTERNATIVES: [
-            'https://overpass.kumi.systems/api/interpreter',
-            'https://z.overpass-api.de/api/interpreter'
+            'https://z.overpass-api.de/api/interpreter',
+            'https://lz4.overpass-api.de/api/interpreter'
         ]
     },
     
