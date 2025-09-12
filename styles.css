@@ -566,7 +566,7 @@ body {
     }
     
     .sitcon-logo-inline {
-        height: 1.6em;
+        height: 1.8em;
         flex-shrink: 0;
     }
     
@@ -585,10 +585,16 @@ body {
     
     .result-actions {
         flex-direction: column;
+        margin-bottom: 1rem;
     }
     
     .btn {
         width: 100%;
+    }
+    
+    .restart-corner {
+        text-align: center;
+        margin-top: 0.5rem;
     }
     
     .map-container {
@@ -635,7 +641,7 @@ body {
     }
     
     .sitcon-logo-inline {
-        height: 1.4em;
+        height: 1.6em;
     }
     
     .restaurant-card {
