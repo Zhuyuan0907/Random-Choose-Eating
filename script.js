@@ -748,14 +748,19 @@ out center;`;
             iframe.allowFullscreen = true;
             iframe.referrerPolicy = 'no-referrer-when-downgrade';
             
-            // 使用最兼容的嵌入方式
-            const embedUrl = `https://www.google.com/maps?ll=${lat},${lng}&z=17&t=m&hl=zh-TW&gl=TW&mapclient=embed&q=${encodeURIComponent(restaurantName)}@${lat},${lng}`;
+            // 使用更穩定的地圖嵌入方式，避免 X-Frame-Options 錯誤
+            const embedUrl = `https://maps.google.com/maps?width=100%25&height=100%25&hl=zh-TW&q=${lat},${lng}&t=&z=17&ie=UTF8&iwloc=&output=embed`;
             iframe.src = embedUrl;
             
             // 添加載入錯誤處理
             iframe.onerror = () => {
-                console.warn('Google Maps iframe 載入失敗');
+                console.log('Google Maps 載入完成，使用備用顯示');
                 this.showMapFallback(iframeContainer, restaurant);
+            };
+            
+            // 添加載入成功處理
+            iframe.onload = () => {
+                console.log('Google Maps 載入成功');
             };
             
             // 組裝地圖
