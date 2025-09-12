@@ -1,14 +1,16 @@
-// Configuration for Restaurant Selector App
+// Configuration for SITCON Organizer Restaurant Selector
 // No API keys required - uses free OpenSource APIs
 
 const CONFIG = {
     // Search radius in meters (default: 2000m = 2km)
     SEARCH_RADIUS: 2000,
     
-    // Default coordinates for fallback (台北車站)
-    DEFAULT_LOCATION: {
-        lat: 25.0478,
-        lng: 121.5168
+    // Fixed location: Mozilla Community Space Taipei (台北市中正區重慶南路一段99號)
+    FIXED_LOCATION: {
+        lat: 25.0465,
+        lng: 121.5155,
+        name: 'Mozilla Community Space Taipei',
+        address: '台北市中正區重慶南路一段99號1105室'
     },
     
     // Animation durations in milliseconds
@@ -25,7 +27,13 @@ const CONFIG = {
         // Maximum results to process
         MAX_RESULTS: 20,
         // Search timeout in seconds
-        TIMEOUT: 25
+        TIMEOUT: 25,
+        // People-based filtering
+        PEOPLE_GROUPS: {
+            small: { min: 1, max: 5, preferredTypes: ['cafe', 'fast_food', 'restaurant'] },
+            medium: { min: 6, max: 15, preferredTypes: ['restaurant', 'cafe'] },
+            large: { min: 16, max: 50, preferredTypes: ['restaurant', 'food_court'] }
+        }
     },
     
     // API endpoints (free and open)
@@ -45,10 +53,11 @@ const CONFIG = {
     MAP: {
         // Default zoom level
         ZOOM: 16,
-        // Tile server for OpenStreetMap
-        TILE_SERVER: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        // Attribution text
-        ATTRIBUTION: '© OpenStreetMap contributors'
+        // Google Maps API Key (optional - leave empty to use basic embed without API key)
+        // Get your API key from: https://developers.google.com/maps/documentation/embed/get-api-key
+        GOOGLE_MAPS_API_KEY: '',
+        // Map display mode
+        MODE: 'google' // 'google' for Google Maps, 'osm' for OpenStreetMap (deprecated)
     }
 };
 

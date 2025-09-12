@@ -9,7 +9,7 @@ body {
     font-family: 'Noto Sans TC', Arial, sans-serif;
     line-height: 1.6;
     color: #333;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #77B55A 0%, #5a9140 100%);
     min-height: 100vh;
 }
 
@@ -124,8 +124,8 @@ body {
 
 .input-group input:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: #77B55A;
+    box-shadow: 0 0 0 3px rgba(119, 181, 90, 0.1);
 }
 
 /* Button Styles */
@@ -146,13 +146,13 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #77B55A 0%, #5a9140 100%);
     color: white;
 }
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 6px 20px rgba(119, 181, 90, 0.4);
 }
 
 .btn-secondary {
@@ -183,9 +183,70 @@ body {
     font-size: 1.2rem;
 }
 
-/* Time Selection */
-.time-selector {
+/* People Selection */
+.people-selector {
     text-align: center;
+}
+
+.people-input-group {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.people-input-group label {
+    font-weight: 500;
+    color: #4a5568;
+}
+
+.people-input-group input[type="number"] {
+    padding: 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 1.2rem;
+    font-family: inherit;
+    width: 120px;
+    text-align: center;
+}
+
+.people-input-group input[type="number"]:focus {
+    outline: none;
+    border-color: #77B55A;
+    box-shadow: 0 0 0 3px rgba(119, 181, 90, 0.1);
+}
+
+.people-unit {
+    font-weight: 500;
+    color: #4a5568;
+}
+
+.people-presets {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.people-btn {
+    padding: 0.8rem 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.people-btn:hover,
+.people-btn.active {
+    background: #77B55A;
+    color: white;
+    border-color: #77B55A;
+    transform: translateY(-2px);
 }
 
 .time-selector input[type="time"] {
@@ -216,9 +277,9 @@ body {
 
 .time-btn:hover,
 .time-btn.active {
-    background: #667eea;
+    background: #77B55A;
     color: white;
-    border-color: #667eea;
+    border-color: #77B55A;
     transform: translateY(-2px);
 }
 
@@ -236,7 +297,7 @@ body {
     width: 30px;
     height: 30px;
     border: 3px solid #f3f3f3;
-    border-top: 3px solid #667eea;
+    border-top: 3px solid #77B55A;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -314,7 +375,7 @@ body {
 
 .restaurant-result .detail {
     padding: 0.5rem;
-    background: rgba(102, 126, 234, 0.1);
+    background: rgba(119, 181, 90, 0.1);
     border-radius: 8px;
     font-size: 0.9rem;
 }
@@ -472,7 +533,7 @@ body {
 /* Animation for restaurant selection */
 .restaurant-card.highlighting {
     animation: pulse 0.5s ease-in-out;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #77B55A 0%, #5a9140 100%);
     color: white;
 }
 

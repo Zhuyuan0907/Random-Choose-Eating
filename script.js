@@ -1,4 +1,613 @@
-// Restaurant Selector App - Streamlined Version
+// SITCON Organizer Restaurant Selector - Streamlined Version  
+class SITCONRestaurantSelector {
+    constructor() {
+        this.map = null;
+        this.fixedLocation = window.CONFIG?.FIXED_LOCATION || {
+            lat: 25.0465,
+            lng: 121.5155,
+            name: 'Mozilla Community Space Taipei',
+            address: '台北市中正區重慶南路一段99號1105室'
+        };
+        this.peopleCount = 8;
+        this.restaurants = [];
+        this.currentStep = 'people-count';
+        this.isProcessing = false;
+        this.isMobile = window.innerWidth < 768;
+        this.selectedRestaurant = null;
+        
+        // API endpoints with alternatives
+        this.overpassAPIs = [
+            'https://overpass-api.de/api/interpreter',
+            'https://overpass.kumi.systems/api/interpreter'
+        ];
+        
+        this.init();
+    }
+
+    init() {
+        this.bindEvents();
+        
+        // Check if we're on mobile and adjust interface
+        if (this.isMobile) {
+            document.body.classList.add('mobile');
+        }
+        
+        // Initialize with people count input focus
+        const peopleInput = document.getElementById('people-count');
+        if (peopleInput) {
+            peopleInput.focus();
+        }
+    }
+
+    bindEvents() {
+        // People count input
+        const peopleInput = document.getElementById('people-count');
+        const peopleSubmit = document.getElementById('people-submit');
+        
+        if (peopleInput) {
+            peopleInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.startFoodSearch();
+                }
+            });
+            
+            peopleInput.addEventListener('input', (e) => {
+                this.peopleCount = parseInt(e.target.value) || 8;
+            });
+        }
+        
+        if (peopleSubmit) {
+            peopleSubmit.addEventListener('click', () => this.startFoodSearch());
+        }
+
+        // People preset buttons
+        const peopleButtons = document.querySelectorAll('.people-btn');
+        peopleButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const count = parseInt(btn.dataset.count);
+                if (count) {
+                    this.setPeopleCount(count);
+                }
+            });
+        });
+
+        // Result actions
+        const viewOnGoogle = document.getElementById('view-on-google');
+        const reroll = document.getElementById('reroll');
+        const startOver = document.getElementById('start-over');
+
+        if (viewOnGoogle) {
+            viewOnGoogle.addEventListener('click', () => this.openGoogleMaps());
+        }
+        if (reroll) {
+            reroll.addEventListener('click', () => this.rerollRestaurant());
+        }
+        if (startOver) {
+            startOver.addEventListener('click', () => this.restart());
+        }
+
+        // Error retry
+        const retryBtn = document.getElementById('retry-btn');
+        if (retryBtn) {
+            retryBtn.addEventListener('click', () => this.restart());
+        }
+    }
+
+    setPeopleCount(count) {
+        this.peopleCount = count;
+        const peopleInput = document.getElementById('people-count');
+        if (peopleInput) {
+            peopleInput.value = count;
+        }
+        
+        // Update active button state
+        document.querySelectorAll('.people-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        const activeBtn = document.querySelector(`[data-count="${count}"]`);
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+        }
+    }
+
+    getPeopleGroupType() {
+        const peopleGroups = window.CONFIG?.SEARCH?.PEOPLE_GROUPS || {
+            small: { min: 1, max: 5, preferredTypes: ['cafe', 'fast_food', 'restaurant'] },
+            medium: { min: 6, max: 15, preferredTypes: ['restaurant', 'cafe'] },
+            large: { min: 16, max: 50, preferredTypes: ['restaurant', 'food_court'] }
+        };
+
+        for (const [groupName, group] of Object.entries(peopleGroups)) {
+            if (this.peopleCount >= group.min && this.peopleCount <= group.max) {
+                return group;
+            }
+        }
+
+        // Default to medium group
+        return peopleGroups.medium;
+    }
+
+    async startFoodSearch() {
+        if (this.isProcessing) return;
+        
+        const peopleInput = document.getElementById('people-count');
+        if (!peopleInput) return;
+        
+        this.peopleCount = parseInt(peopleInput.value) || 8;
+        
+        if (this.peopleCount < 1 || this.peopleCount > 50) {
+            this.showError('請輸入 1-50 之間的有效人數');
+            return;
+        }
+
+        console.log('Starting SITCON food search for:', this.peopleCount, 'people');
+        this.isProcessing = true;
+        this.showLoading('people-loading');
+
+        try {
+            // Step 1: Search restaurants near Mozilla Community Space
+            console.log('Step 1: Searching restaurants near', this.fixedLocation.name);
+            this.showStep('search');
+            this.updateSearchStatus('正在搜尋 Mozilla Community Space 附近餐廳...');
+            const restaurants = await this.findNearbyRestaurants();
+            console.log('Found restaurants:', restaurants.length);
+            
+            if (restaurants.length === 0) {
+                throw new Error('找不到附近的餐廳，請稍後再試');
+            }
+
+            // Step 2: Filter by people count and preferences
+            console.log('Step 2: Filtering by group size...');
+            this.updateSearchStatus('正在根據人數篩選合適餐廳...');
+            const suitableRestaurants = this.filterRestaurantsByPeopleCount(restaurants);
+            console.log('Suitable restaurants for', this.peopleCount, 'people:', suitableRestaurants.length);
+            
+            if (suitableRestaurants.length === 0) {
+                throw new Error('找不到適合此人數的餐廳，請嘗試調整人數');
+            }
+
+            this.restaurants = suitableRestaurants;
+            
+            // Step 3: Automatically select a restaurant with animation
+            console.log('Step 3: Performing random selection...');
+            this.updateSearchStatus('正在為 SITCON 團隊隨機選擇...');
+            await this.performRandomSelection();
+            console.log('Random selection complete');
+            
+        } catch (error) {
+            console.error('SITCON food search error:', error);
+            this.showError(error.message || '搜尋過程中發生錯誤，請稍後再試');
+        } finally {
+            this.isProcessing = false;
+            this.hideLoading('people-loading');
+        }
+    }
+
+    filterRestaurantsByPeopleCount(restaurants) {
+        const groupType = this.getPeopleGroupType();
+        console.log('Group type for', this.peopleCount, 'people:', groupType);
+        
+        // Filter restaurants by preferred types for this group size
+        const preferredRestaurants = restaurants.filter(restaurant => {
+            return groupType.preferredTypes.includes(restaurant.amenity);
+        });
+
+        // If we have preferred restaurants, use them; otherwise fall back to all restaurants
+        return preferredRestaurants.length > 0 ? preferredRestaurants : restaurants;
+    }
+
+    // Keep the rest of the methods from the original class but update them for SITCON use
+    async findNearbyRestaurants() {
+        const radius = window.CONFIG?.SEARCH_RADIUS || 2000; // 2km
+        const lat = this.fixedLocation.lat;
+        const lng = this.fixedLocation.lng;
+        
+        // Calculate bounding box
+        const latDelta = radius / 111320; // Approximate degrees per meter
+        const lngDelta = radius / (111320 * Math.cos(lat * Math.PI / 180));
+        
+        const south = lat - latDelta;
+        const north = lat + latDelta;
+        const west = lng - lngDelta;
+        const east = lng + lngDelta;
+
+        // Overpass QL query to find restaurants
+        const query = `
+        [out:json][timeout:25];
+        (
+          node["amenity"="restaurant"](${south},${west},${north},${east});
+          node["amenity"="fast_food"](${south},${west},${north},${east});
+          node["amenity"="cafe"](${south},${west},${north},${east});
+          node["amenity"="food_court"](${south},${west},${north},${east});
+          way["amenity"="restaurant"](${south},${west},${north},${east});
+          way["amenity"="fast_food"](${south},${west},${north},${east});
+          way["amenity"="cafe"](${south},${west},${north},${east});
+          way["amenity"="food_court"](${south},${west},${north},${east});
+          relation["amenity"="restaurant"](${south},${west},${north},${east});
+          relation["amenity"="fast_food"](${south},${west},${north},${east});
+          relation["amenity"="cafe"](${south},${west},${north},${east});
+          relation["amenity"="food_court"](${south},${west},${north},${east});
+        );
+        out center;
+        `;
+
+        // Try multiple Overpass APIs
+        for (let apiIndex = 0; apiIndex < this.overpassAPIs.length; apiIndex++) {
+            const overpassAPI = this.overpassAPIs[apiIndex];
+            console.log(`Trying Overpass API: ${overpassAPI}`);
+            
+            try {
+                const response = await fetch(overpassAPI, {
+                    method: 'POST',
+                    body: query,
+                    headers: {
+                        'Content-Type': 'text/plain',
+                        'User-Agent': 'SITCONRestaurantSelector/1.0'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log(`Found ${data.elements.length} elements from Overpass`);
+                
+                const restaurants = data.elements.map(element => {
+                    // Get coordinates
+                    let elementLat, elementLng;
+                    if (element.lat && element.lon) {
+                        elementLat = element.lat;
+                        elementLng = element.lon;
+                    } else if (element.center) {
+                        elementLat = element.center.lat;
+                        elementLng = element.center.lon;
+                    } else {
+                        return null;
+                    }
+
+                    // Calculate distance
+                    const distance = this.calculateDistance(lat, lng, elementLat, elementLng);
+
+                    return {
+                        id: element.id,
+                        name: element.tags?.name || element.tags?.['name:zh'] || element.tags?.['name:en'] || '未知餐廳',
+                        amenity: element.tags?.amenity || 'restaurant',
+                        cuisine: element.tags?.cuisine || '',
+                        address: element.tags?.['addr:full'] || element.tags?.['addr:street'] || '',
+                        phone: element.tags?.phone || '',
+                        website: element.tags?.website || '',
+                        opening_hours: element.tags?.opening_hours || '',
+                        lat: elementLat,
+                        lng: elementLng,
+                        distance: distance
+                    };
+                }).filter(restaurant => restaurant !== null && restaurant.name !== '未知餐廳')
+                  .sort((a, b) => a.distance - b.distance)
+                  .slice(0, window.CONFIG?.SEARCH?.MAX_RESULTS || 30);
+
+                if (restaurants.length > 0) {
+                    console.log(`Successfully found ${restaurants.length} restaurants`);
+                    return restaurants;
+                }
+                
+            } catch (error) {
+                console.warn(`Overpass API ${overpassAPI} failed:`, error.message);
+                continue;
+            }
+        }
+        
+        // If all APIs failed, throw error
+        throw new Error('無法連接到餐廳資料庫，請稍後再試');
+    }
+
+    calculateDistance(lat1, lng1, lat2, lng2) {
+        const R = 6371; // Earth's radius in kilometers
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLng/2) * Math.sin(dLng/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c * 1000; // Return distance in meters
+    }
+
+    async performRandomSelection() {
+        console.log('Starting SITCON random selection with', this.restaurants.length, 'restaurants');
+        
+        // Show the roulette display
+        const rouletteDisplay = document.getElementById('roulette-display');
+        const restaurantCard = document.getElementById('current-restaurant');
+        
+        if (rouletteDisplay) {
+            rouletteDisplay.style.display = 'block';
+        }
+        
+        if (restaurantCard) {
+            restaurantCard.classList.add('spinning');
+        }
+
+        this.updateSearchStatus(`找到 ${this.restaurants.length} 家適合 ${this.peopleCount} 人的餐廳，正在選擇...`);
+
+        // Show random restaurants during animation
+        const animationDuration = 1500;
+        const intervalTime = 100;
+        const intervals = animationDuration / intervalTime;
+        let currentInterval = 0;
+
+        const animationInterval = setInterval(() => {
+            if (currentInterval < intervals) {
+                const randomRestaurant = this.restaurants[Math.floor(Math.random() * this.restaurants.length)];
+                this.updateRestaurantCard(randomRestaurant);
+                currentInterval++;
+            } else {
+                clearInterval(animationInterval);
+                
+                // Final selection
+                const selectedRestaurant = this.restaurants[Math.floor(Math.random() * this.restaurants.length)];
+                this.selectedRestaurant = selectedRestaurant;
+                this.updateRestaurantCard(selectedRestaurant);
+                
+                setTimeout(() => {
+                    if (restaurantCard) {
+                        restaurantCard.classList.remove('spinning');
+                        restaurantCard.classList.add('highlighting');
+                    }
+                    
+                    setTimeout(() => {
+                        this.showFinalResult(selectedRestaurant);
+                    }, 500);
+                }, 200);
+            }
+        }, intervalTime);
+    }
+
+    updateRestaurantCard(restaurant) {
+        const nameElement = document.querySelector('#current-restaurant .restaurant-name');
+        const infoElement = document.querySelector('#current-restaurant .restaurant-info');
+        
+        if (nameElement) {
+            nameElement.textContent = restaurant.name;
+        }
+        
+        if (infoElement) {
+            const distance = (restaurant.distance / 1000).toFixed(1);
+            const amenityText = this.getAmenityText(restaurant.amenity);
+            let info = `${amenityText} • ${distance}km`;
+            if (restaurant.cuisine) {
+                info += ` • ${restaurant.cuisine}`;
+            }
+            infoElement.textContent = info;
+        }
+    }
+
+    getAmenityText(amenity) {
+        const amenityMap = {
+            'restaurant': '餐廳',
+            'fast_food': '速食',
+            'cafe': '咖啡廳',
+            'food_court': '美食廣場'
+        };
+        return amenityMap[amenity] || '餐廳';
+    }
+
+    showFinalResult(restaurant) {
+        console.log('Showing final result for SITCON');
+        
+        // Show result step
+        this.showStep('result');
+        
+        // Populate result data
+        const finalRestaurantEl = document.getElementById('final-restaurant');
+        if (finalRestaurantEl) {
+            const distance = (restaurant.distance / 1000).toFixed(1);
+            const amenityText = this.getAmenityText(restaurant.amenity);
+            
+            finalRestaurantEl.innerHTML = `
+                <div class="name">${restaurant.name}</div>
+                <div class="details">
+                    <div class="detail">🏷️ ${amenityText}</div>
+                    <div class="detail">📍 距離 Mozilla Community Space ${distance} 公里</div>
+                    <div class="detail">👥 適合 ${this.peopleCount} 人聚餐</div>
+                    ${restaurant.cuisine ? `<div class="detail">🍽️ ${restaurant.cuisine}</div>` : ''}
+                    ${restaurant.address ? `<div class="detail">📮 ${restaurant.address}</div>` : ''}
+                    ${restaurant.phone ? `<div class="detail">📞 ${restaurant.phone}</div>` : ''}
+                </div>
+            `;
+        }
+        
+        // Initialize map (this will be replaced with Google Maps later)
+        this.initializeMap(restaurant);
+    }
+
+    initializeMap(restaurant) {
+        // Use Google Maps Embed API (no API key required for basic embedding)
+        const mapContainer = document.getElementById('map-container');
+        if (!mapContainer || this.isMobile) return;
+        
+        try {
+            // Clear existing map content
+            mapContainer.innerHTML = '';
+            
+            // Create Google Maps embed URL
+            // We'll show the restaurant location with both the restaurant and Mozilla Community Space
+            const restaurantLat = restaurant.lat;
+            const restaurantLng = restaurant.lng;
+            const mozillaLat = this.fixedLocation.lat;
+            const mozillaLng = this.fixedLocation.lng;
+            
+            // Calculate center point between restaurant and Mozilla Community Space
+            const centerLat = (restaurantLat + mozillaLat) / 2;
+            const centerLng = (restaurantLng + mozillaLng) / 2;
+            
+            // Create an iframe with Google Maps embed
+            const iframe = document.createElement('iframe');
+            iframe.width = '100%';
+            iframe.height = '100%';
+            iframe.style.border = '0';
+            iframe.loading = 'lazy';
+            iframe.allowFullscreen = true;
+            iframe.referrerPolicy = 'no-referrer-when-downgrade';
+            
+            // Check if we have a Google Maps API key
+            const apiKey = window.CONFIG?.MAP?.GOOGLE_MAPS_API_KEY;
+            
+            if (apiKey && apiKey.trim()) {
+                // Use Google Maps embed with directions from Mozilla Community Space to restaurant
+                const embedUrl = `https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${mozillaLat},${mozillaLng}&destination=${restaurantLat},${restaurantLng}&mode=walking&language=zh-TW`;
+                iframe.src = embedUrl;
+            } else {
+                // Use basic map view centered on the restaurant (no API key required)
+                const staticMapUrl = `https://maps.google.com/maps?width=100%25&height=400&hl=zh&q=${restaurantLat},${restaurantLng}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
+                iframe.src = staticMapUrl;
+            }
+            
+            // Add the iframe to the map container
+            mapContainer.appendChild(iframe);
+            
+            console.log('Google Maps embedded successfully');
+            
+        } catch (error) {
+            console.warn('Google Maps initialization failed:', error);
+            
+            // Fallback: show a simple link to Google Maps
+            mapContainer.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f0f0f0; border-radius: 16px; color: #666; text-align: center; padding: 2rem;">
+                    <div>
+                        <p style="margin-bottom: 1rem;">地圖載入失敗</p>
+                        <button class="btn btn-primary" onclick="window.open('https://www.google.com/maps/search/?api=1&query=${restaurant.lat},${restaurant.lng}', '_blank')">
+                            在 Google Maps 中查看
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    openGoogleMaps() {
+        if (!this.selectedRestaurant) return;
+        
+        const lat = this.selectedRestaurant.lat;
+        const lng = this.selectedRestaurant.lng;
+        const name = encodeURIComponent(this.selectedRestaurant.name);
+        
+        const url = `https://www.google.com/maps/search/?api=1&query=${name}&query_place_id=&center=${lat},${lng}`;
+        window.open(url, '_blank');
+    }
+
+    rerollRestaurant() {
+        if (this.restaurants.length === 0) return;
+        
+        console.log('SITCON rerolling restaurant selection');
+        this.showStep('search');
+        this.updateSearchStatus('重新為 SITCON 團隊選擇餐廳...');
+        
+        setTimeout(() => {
+            this.performRandomSelection();
+        }, 500);
+    }
+
+    restart() {
+        console.log('SITCON app restart');
+        this.restaurants = [];
+        this.selectedRestaurant = null;
+        this.peopleCount = 8;
+        this.isProcessing = false;
+        
+        // Reset people count input
+        const peopleInput = document.getElementById('people-count');
+        if (peopleInput) {
+            peopleInput.value = '8';
+        }
+        
+        // Reset active button
+        document.querySelectorAll('.people-btn').forEach(btn => btn.classList.remove('active'));
+        const defaultBtn = document.querySelector('[data-count="8"]');
+        if (defaultBtn) {
+            defaultBtn.classList.add('active');
+        }
+        
+        this.showStep('people-count');
+        
+        if (peopleInput) {
+            peopleInput.focus();
+        }
+    }
+
+    showStep(stepName) {
+        // Hide all steps
+        const steps = ['people-count', 'search', 'result'];
+        steps.forEach(step => {
+            const element = document.getElementById(`step-${step}`);
+            if (element) {
+                element.style.display = 'none';
+            }
+        });
+        
+        // Hide error section
+        const errorSection = document.getElementById('error-section');
+        if (errorSection) {
+            errorSection.style.display = 'none';
+        }
+        
+        // Show requested step
+        const targetStep = document.getElementById(`step-${stepName}`);
+        if (targetStep) {
+            targetStep.style.display = 'block';
+            this.currentStep = stepName;
+        }
+    }
+
+    showLoading(loadingId) {
+        const loading = document.getElementById(loadingId);
+        if (loading) {
+            loading.style.display = 'flex';
+        }
+    }
+
+    hideLoading(loadingId) {
+        const loading = document.getElementById(loadingId);
+        if (loading) {
+            loading.style.display = 'none';
+        }
+    }
+
+    updateLoadingText(text) {
+        const spans = document.querySelectorAll('#people-loading span');
+        spans.forEach(span => {
+            span.textContent = text;
+        });
+    }
+
+    updateSearchStatus(text) {
+        const statusElement = document.getElementById('search-status-text');
+        if (statusElement) {
+            statusElement.textContent = text;
+        }
+    }
+
+    showError(message) {
+        console.error('SITCON error:', message);
+        
+        // Hide all steps
+        this.showStep('error');
+        
+        const errorSection = document.getElementById('error-section');
+        const errorMessage = document.getElementById('error-message');
+        
+        if (errorSection) {
+            errorSection.style.display = 'block';
+        }
+        
+        if (errorMessage) {
+            errorMessage.textContent = message;
+        }
+    }
+}
+
+// Restaurant Selector App - Streamlined Version (Original class for backward compatibility)
 class RestaurantSelector {
     constructor() {
         this.map = null;
