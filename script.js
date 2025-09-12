@@ -46,59 +46,80 @@ class RestaurantSelector {
         const addressInput = document.getElementById('address-input');
         const addressSubmit = document.getElementById('address-submit');
         
-        addressInput?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.submitAddress();
-            }
-        });
+        if (addressInput) {
+            addressInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.submitAddress();
+                }
+            });
+        }
         
-        addressSubmit?.addEventListener('click', () => this.submitAddress());
+        if (addressSubmit) {
+            addressSubmit.addEventListener('click', () => this.submitAddress());
+        }
 
         // Time selection
         const timeInput = document.getElementById('meal-time');
         const timeButtons = document.querySelectorAll('.time-btn');
         const timeSubmit = document.getElementById('time-submit');
 
-        timeInput?.addEventListener('change', (e) => {
-            this.selectedTime = e.target.value;
-            this.updateTimeButtons();
-        });
+        if (timeInput) {
+            timeInput.addEventListener('change', (e) => {
+                this.selectedTime = e.target.value;
+                this.updateTimeButtons();
+            });
+        }
 
         timeButtons.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const time = e.target.dataset.time;
                 this.selectedTime = time;
-                timeInput.value = time;
+                if (timeInput) timeInput.value = time;
                 this.updateTimeButtons();
             });
         });
 
-        timeSubmit?.addEventListener('click', () => this.searchRestaurants());
+        if (timeSubmit) {
+            timeSubmit.addEventListener('click', () => this.searchRestaurants());
+        }
 
         // Restaurant selection
         const startRandom = document.getElementById('start-random');
         const reroll = document.getElementById('reroll');
 
-        startRandom?.addEventListener('click', () => this.startRandomSelection());
-        reroll?.addEventListener('click', () => this.startRandomSelection());
+        if (startRandom) {
+            startRandom.addEventListener('click', () => this.startRandomSelection());
+        }
+        if (reroll) {
+            reroll.addEventListener('click', () => this.startRandomSelection());
+        }
 
         // Result actions
         const viewOnOSM = document.getElementById('view-on-osm');
         const viewOnGoogle = document.getElementById('view-on-google');
         const startOver = document.getElementById('start-over');
 
-        viewOnOSM?.addEventListener('click', () => this.openOSMMap());
-        viewOnGoogle?.addEventListener('click', () => this.openGoogleMaps());
-        startOver?.addEventListener('click', () => this.restart());
+        if (viewOnOSM) {
+            viewOnOSM.addEventListener('click', () => this.openOSMMap());
+        }
+        if (viewOnGoogle) {
+            viewOnGoogle.addEventListener('click', () => this.openGoogleMaps());
+        }
+        if (startOver) {
+            startOver.addEventListener('click', () => this.restart());
+        }
 
         // Error retry
         const retryBtn = document.getElementById('retry-btn');
-        retryBtn?.addEventListener('click', () => this.restart());
+        if (retryBtn) {
+            retryBtn.addEventListener('click', () => this.restart());
+        }
     }
-
 
     async submitAddress() {
         const addressInput = document.getElementById('address-input');
+        if (!addressInput) return;
+        
         const address = addressInput.value.trim();
         
         if (!address) {
@@ -117,12 +138,14 @@ class RestaurantSelector {
             
         } catch (error) {
             this.hideLoading('address-loading');
-            this.showError('無法找到該地址，請檢查後重新輸入');
+            this.showError(error.message || '無法找到該地址，請檢查後重新輸入');
             console.error('Geocoding error:', error);
         }
     }
 
     async geocodeAddress(address) {
+        console.log('Starting geocoding for:', address);
+        
         // Try multiple variations of the address
         const addressVariations = [
             address,
@@ -269,7 +292,7 @@ class RestaurantSelector {
             
         } catch (error) {
             console.error('Restaurant search error:', error);
-            this.showError('搜尋餐廳時發生錯誤，請稍後再試');
+            this.showError(error.message || '搜尋餐廳時發生錯誤，請稍後再試');
         }
     }
 
@@ -391,7 +414,6 @@ class RestaurantSelector {
     filterRestaurantsByTime(restaurants) {
         const selectedTime = this.parseTime(this.selectedTime);
         const now = new Date();
-        const dayOfWeek = now.getDay();
         
         return restaurants.filter(restaurant => {
             // If no opening hours data, assume it might be open
@@ -400,11 +422,11 @@ class RestaurantSelector {
             }
 
             // Basic opening hours parsing (simplified)
-            return this.isRestaurantOpenBasic(restaurant.opening_hours, selectedTime, dayOfWeek);
+            return this.isRestaurantOpenBasic(restaurant.opening_hours, selectedTime);
         });
     }
 
-    isRestaurantOpenBasic(openingHours, selectedTime, dayOfWeek) {
+    isRestaurantOpenBasic(openingHours, selectedTime) {
         // Very basic parsing of opening hours
         // This is simplified - real parsing would be much more complex
         const hoursLower = openingHours.toLowerCase();
@@ -434,11 +456,17 @@ class RestaurantSelector {
 
     setupRestaurantRoulette() {
         const restaurantCard = document.getElementById('current-restaurant');
+        if (!restaurantCard) return;
+        
         const restaurantName = restaurantCard.querySelector('.restaurant-name');
         const restaurantInfo = restaurantCard.querySelector('.restaurant-info');
 
-        restaurantName.textContent = `找到 ${this.restaurants.length} 家餐廳`;
-        restaurantInfo.textContent = '準備開始選擇...';
+        if (restaurantName) {
+            restaurantName.textContent = `找到 ${this.restaurants.length} 家餐廳`;
+        }
+        if (restaurantInfo) {
+            restaurantInfo.textContent = '準備開始選擇...';
+        }
     }
 
     async startRandomSelection() {
@@ -449,10 +477,10 @@ class RestaurantSelector {
         const startButton = document.getElementById('start-random');
         const rerollButton = document.getElementById('reroll');
 
-        startButton.style.display = 'none';
-        rerollButton.style.display = 'none';
+        if (startButton) startButton.style.display = 'none';
+        if (rerollButton) rerollButton.style.display = 'none';
         
-        restaurantCard.classList.add('spinning');
+        if (restaurantCard) restaurantCard.classList.add('spinning');
 
         // Show random restaurants during animation
         const animationDuration = window.CONFIG?.ANIMATION?.ROULETTE_DURATION || 2000;
@@ -473,11 +501,15 @@ class RestaurantSelector {
                 this.updateRestaurantCard(selectedRestaurant);
                 
                 setTimeout(() => {
-                    restaurantCard.classList.remove('spinning');
-                    restaurantCard.classList.add('highlighting');
+                    if (restaurantCard) {
+                        restaurantCard.classList.remove('spinning');
+                        restaurantCard.classList.add('highlighting');
+                    }
                     
                     setTimeout(() => {
-                        restaurantCard.classList.remove('highlighting');
+                        if (restaurantCard) {
+                            restaurantCard.classList.remove('highlighting');
+                        }
                         this.showFinalResult(selectedRestaurant);
                         this.isSpinning = false;
                     }, window.CONFIG?.ANIMATION?.HIGHLIGHT_DURATION || 1000);
@@ -488,19 +520,25 @@ class RestaurantSelector {
 
     updateRestaurantCard(restaurant) {
         const restaurantCard = document.getElementById('current-restaurant');
+        if (!restaurantCard) return;
+        
         const restaurantName = restaurantCard.querySelector('.restaurant-name');
         const restaurantInfo = restaurantCard.querySelector('.restaurant-info');
 
-        restaurantName.textContent = restaurant.name;
+        if (restaurantName) {
+            restaurantName.textContent = restaurant.name;
+        }
         
         const cuisine = restaurant.cuisine ? `🍽️ ${restaurant.cuisine}` : '';
         const distance = `📍 ${(restaurant.distance / 1000).toFixed(1)}km`;
         const amenity = this.getAmenityIcon(restaurant.amenity);
         
-        restaurantInfo.innerHTML = `
-            <div>${amenity} ${cuisine}</div>
-            <div style="font-size: 0.8rem; opacity: 0.7;">${distance}</div>
-        `;
+        if (restaurantInfo) {
+            restaurantInfo.innerHTML = `
+                <div>${amenity} ${cuisine}</div>
+                <div style="font-size: 0.8rem; opacity: 0.7;">${distance}</div>
+            `;
+        }
     }
 
     getAmenityIcon(amenity) {
@@ -516,6 +554,7 @@ class RestaurantSelector {
     showFinalResult(restaurant) {
         this.selectedRestaurant = restaurant;
         const resultContainer = document.getElementById('final-restaurant');
+        if (!resultContainer) return;
         
         const cuisine = restaurant.cuisine ? `🍽️ ${restaurant.cuisine}` : '';
         const distance = `📍 ${(restaurant.distance / 1000).toFixed(1)}km`;
@@ -542,13 +581,16 @@ class RestaurantSelector {
         
         // Show reroll button after result
         setTimeout(() => {
-            document.getElementById('reroll').style.display = 'inline-flex';
+            const rerollButton = document.getElementById('reroll');
+            if (rerollButton) {
+                rerollButton.style.display = 'inline-flex';
+            }
         }, 1000);
     }
 
     initializeMap(lat, lng, restaurant) {
         const mapContainer = document.getElementById('map-container');
-        if (!mapContainer) return;
+        if (!mapContainer || typeof L === 'undefined') return;
 
         try {
             // Clear existing map
@@ -652,19 +694,27 @@ class RestaurantSelector {
         }
         
         // Reset form
-        document.getElementById('address-input').value = '';
+        const addressInput = document.getElementById('address-input');
+        if (addressInput) {
+            addressInput.value = '';
+        }
         this.updateTimeDisplay();
         
         // Reset buttons
-        document.getElementById('start-random').style.display = 'inline-flex';
-        document.getElementById('reroll').style.display = 'none';
+        const startButton = document.getElementById('start-random');
+        const rerollButton = document.getElementById('reroll');
+        
+        if (startButton) startButton.style.display = 'inline-flex';
+        if (rerollButton) rerollButton.style.display = 'none';
         
         // Show first step
         this.showStep('address');
         
         // Focus on address input
         setTimeout(() => {
-            document.getElementById('address-input').focus();
+            if (addressInput) {
+                addressInput.focus();
+            }
         }, 100);
     }
 
