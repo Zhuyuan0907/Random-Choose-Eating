@@ -27,7 +27,7 @@ body {
 
 /* Header */
 .header {
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
     color: white;
 }
 
@@ -60,7 +60,7 @@ body {
 
 .header h1 {
     font-size: 2.5rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0;
     font-weight: 700;
     text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
@@ -549,7 +549,8 @@ body {
 
 @media (max-width: 767px) {
     .header h1 {
-        font-size: 2rem;
+        font-size: 1.8rem;
+        line-height: 1.3;
     }
     
     .header-content {
@@ -558,12 +559,15 @@ body {
     }
     
     .title-with-inline-logo {
-        flex-direction: column;
-        gap: 0.3rem;
+        flex-direction: row;
+        gap: 0.4rem;
+        align-items: center;
+        justify-content: center;
     }
     
     .sitcon-logo-inline {
-        height: 1.8em;
+        height: 1.6em;
+        flex-shrink: 0;
     }
     
     .time-selector-header {
@@ -609,23 +613,46 @@ body {
 /* Special mobile styles */
 @media (max-width: 480px) {
     .container {
-        padding: 1rem;
+        padding: 12px;
     }
     
     .step {
-        padding: 1.5rem;
-        margin-bottom: 1rem;
+        padding: 1rem;
+        margin-bottom: 0.8rem;
+    }
+    
+    .header {
+        margin-bottom: 0.8rem;
     }
     
     .header h1 {
-        font-size: 1.8rem;
+        font-size: 1.6rem;
+        line-height: 1.2;
+    }
+    
+    .title-with-inline-logo {
+        flex-wrap: nowrap;
+    }
+    
+    .sitcon-logo-inline {
+        height: 1.4em;
     }
     
     .restaurant-card {
-        padding: 1.5rem;
+        padding: 1rem;
     }
     
     .restaurant-name {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
+    }
+    
+    .people-presets {
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+    }
+    
+    .people-btn {
+        padding: 0.7rem;
+        font-size: 0.85rem;
     }
 }
