@@ -106,27 +106,34 @@ class RestaurantSelector {
             return;
         }
 
+        console.log('Starting food search for:', address);
         this.isProcessing = true;
         this.showLoading('address-loading');
 
         try {
             // Step 1: Geocode address
+            console.log('Step 1: Geocoding address...');
             this.updateLoadingText('正在定位...');
             const location = await this.geocodeAddress(address);
+            console.log('Geocoding successful:', location);
             this.userLocation = location;
             
             // Step 2: Search restaurants
+            console.log('Step 2: Searching restaurants...');
             this.showStep('search');
             this.updateSearchStatus('正在搜尋附近餐廳...');
             const restaurants = await this.findNearbyRestaurants();
+            console.log('Found restaurants:', restaurants.length);
             
             if (restaurants.length === 0) {
                 throw new Error('找不到附近的餐廳，請嘗試其他地點');
             }
 
             // Step 3: Filter by time
+            console.log('Step 3: Filtering by time...');
             this.updateSearchStatus('正在篩選營業中餐廳...');
             const openRestaurants = this.filterRestaurantsByTime(restaurants);
+            console.log('Filtered restaurants:', openRestaurants.length);
             
             if (openRestaurants.length === 0) {
                 throw new Error('找不到在此時間可能營業的餐廳，請嘗試其他時間');
@@ -135,8 +142,10 @@ class RestaurantSelector {
             this.restaurants = openRestaurants;
             
             // Step 4: Automatically select a restaurant with animation
+            console.log('Step 4: Performing random selection...');
             this.updateSearchStatus('正在為你隨機選擇...');
             await this.performRandomSelection();
+            console.log('Random selection complete');
             
         } catch (error) {
             console.error('Food search error:', error);
@@ -150,61 +159,58 @@ class RestaurantSelector {
     async geocodeAddress(address) {
         console.log('Starting geocoding for:', address);
         
-        // Try multiple variations of the address
-        const addressVariations = [
-            address,
+        // Simple and direct approach first
+        const searchQueries = [
+            `${address}`,
             `${address}, 台灣`,
-            `${address}, Taiwan`,
-            address.replace(/縣|市|區|鎮|里/g, '').trim(),
-            address.replace(/路|街|巷|號/g, '').trim()
-        ].filter(addr => addr.length > 0);
+            `${address}, Taiwan`
+        ];
 
-        for (let apiIndex = 0; apiIndex < this.nominatimAPIs.length; apiIndex++) {
-            const nominatimAPI = this.nominatimAPIs[apiIndex];
-            
-            for (const addressVar of addressVariations) {
-                try {
-                    console.log(`Trying: ${addressVar} on ${nominatimAPI}`);
-                    
-                    const url = `${nominatimAPI}/search?format=json&q=${encodeURIComponent(addressVar)}&limit=3&accept-language=zh-TW,zh,en&countrycodes=tw`;
-                    
-                    const response = await fetch(url, {
-                        headers: {
-                            'User-Agent': 'RestaurantSelector/1.0'
-                        }
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
+        // Try primary API first
+        for (const query of searchQueries) {
+            try {
+                console.log(`Trying query: ${query}`);
+                
+                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=3&accept-language=zh-TW,zh,en`;
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'User-Agent': 'RestaurantSelector/1.0'
                     }
-                    
-                    const data = await response.json();
-                    
-                    if (data && data.length > 0) {
-                        const result = data[0];
-                        console.log(`Found: ${result.display_name}`);
-                        
-                        return {
-                            lat: parseFloat(result.lat),
-                            lng: parseFloat(result.lon),
-                            address: result.display_name
-                        };
-                    }
-                    
-                    // Wait a bit between requests to be nice to the API
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                    
-                } catch (error) {
-                    console.warn(`Failed ${addressVar} on ${nominatimAPI}:`, error.message);
+                });
+                
+                if (!response.ok) {
+                    console.warn(`HTTP ${response.status} for ${query}`);
                     continue;
                 }
+                
+                const data = await response.json();
+                console.log(`Response for "${query}":`, data.length, 'results');
+                
+                if (data && data.length > 0) {
+                    const result = data[0];
+                    console.log(`Found: ${result.display_name}`);
+                    
+                    return {
+                        lat: parseFloat(result.lat),
+                        lng: parseFloat(result.lon),
+                        address: result.display_name
+                    };
+                }
+                
+                // Wait between requests
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+            } catch (error) {
+                console.warn(`Failed query "${query}":`, error.message);
+                continue;
             }
         }
         
-        // If all attempts failed, try a broader search without country restriction
+        // If all failed, try backup API
         try {
-            console.log('Trying broader search...');
-            const url = `${this.nominatimAPIs[0]}/search?format=json&q=${encodeURIComponent(address)}&limit=5&accept-language=zh-TW,zh,en`;
+            console.log('Trying backup API...');
+            const url = `https://nominatim.osm.org/search?format=json&q=${encodeURIComponent(address)}&limit=3&accept-language=zh-TW,zh,en`;
             
             const response = await fetch(url, {
                 headers: {
@@ -215,15 +221,8 @@ class RestaurantSelector {
             const data = await response.json();
             
             if (data && data.length > 0) {
-                // Prefer results in Taiwan
-                const taiwanResult = data.find(r => 
-                    r.display_name.includes('台灣') || 
-                    r.display_name.includes('Taiwan') ||
-                    r.display_name.includes('臺灣')
-                );
-                
-                const result = taiwanResult || data[0];
-                console.log(`Broader search found: ${result.display_name}`);
+                const result = data[0];
+                console.log(`Backup API found: ${result.display_name}`);
                 
                 return {
                     lat: parseFloat(result.lat),
@@ -232,10 +231,10 @@ class RestaurantSelector {
                 };
             }
         } catch (error) {
-            console.error('Broader search failed:', error);
+            console.error('Backup API failed:', error);
         }
         
-        throw new Error('找不到該地址，請嘗試更具體的地名，例如：台北車站、高雄火車站、台中逢甲夜市');
+        throw new Error(`找不到地址："${address}"，請嘗試更具體的地名，例如：台北車站、高雄火車站`);
     }
 
     async findNearbyRestaurants() {
@@ -395,25 +394,35 @@ class RestaurantSelector {
     }
 
     async performRandomSelection() {
+        console.log('Starting random selection with', this.restaurants.length, 'restaurants');
+        
         // Show the roulette display
         const rouletteDisplay = document.getElementById('roulette-display');
         const restaurantCard = document.getElementById('current-restaurant');
         
         if (rouletteDisplay) {
             rouletteDisplay.style.display = 'block';
+            console.log('Roulette display shown');
+        } else {
+            console.warn('Roulette display not found');
         }
         
         if (restaurantCard) {
             restaurantCard.classList.add('spinning');
+            console.log('Added spinning class');
+        } else {
+            console.warn('Restaurant card not found');
         }
 
         this.updateSearchStatus(`找到 ${this.restaurants.length} 家餐廳，正在選擇...`);
 
         // Show random restaurants during animation
-        const animationDuration = window.CONFIG?.ANIMATION?.ROULETTE_DURATION || 2000;
-        const intervalTime = window.CONFIG?.ANIMATION?.CARD_SPIN_INTERVAL || 100;
+        const animationDuration = 1500; // Shorter duration for testing
+        const intervalTime = 100;
         const intervals = animationDuration / intervalTime;
         let currentInterval = 0;
+
+        console.log(`Starting animation: ${intervals} intervals`);
 
         const animationInterval = setInterval(() => {
             if (currentInterval < intervals) {
@@ -422,23 +431,27 @@ class RestaurantSelector {
                 currentInterval++;
             } else {
                 clearInterval(animationInterval);
+                console.log('Animation complete, selecting final restaurant');
                 
                 // Final selection
                 const selectedRestaurant = this.restaurants[Math.floor(Math.random() * this.restaurants.length)];
                 this.updateRestaurantCard(selectedRestaurant);
+                console.log('Final restaurant selected:', selectedRestaurant.name);
                 
                 setTimeout(() => {
                     if (restaurantCard) {
                         restaurantCard.classList.remove('spinning');
                         restaurantCard.classList.add('highlighting');
+                        console.log('Added highlighting class');
                     }
                     
                     setTimeout(() => {
                         if (restaurantCard) {
                             restaurantCard.classList.remove('highlighting');
                         }
+                        console.log('Showing final result');
                         this.showFinalResult(selectedRestaurant);
-                    }, window.CONFIG?.ANIMATION?.HIGHLIGHT_DURATION || 1000);
+                    }, 800);
                 }, 500);
             }
         }, intervalTime);
