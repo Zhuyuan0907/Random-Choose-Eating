@@ -16,8 +16,13 @@
         <header class="header">
             <div class="header-content">
                 <div class="title-section">
-                    <h1>🍽️ SITCON 籌會晚餐選擇器</h1>
-                    <p class="subtitle">Mozilla Community Space 附近餐廳隨機推薦</p>
+                    <div class="title-with-logo">
+                        <img src="sitcon-logo.svg" alt="SITCON Logo" class="sitcon-logo">
+                        <div class="title-text">
+                            <h1>SITCON 籌會晚餐選擇器</h1>
+                            <p class="subtitle">Mozilla Community Space 附近餐廳隨機推薦</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </header>
@@ -26,7 +31,7 @@
             <!-- Step 1: People Count Input -->
             <section class="step" id="step-people-count">
                 <div class="step-content">
-                    <h2>👥 這次有多少人要一起吃飯？</h2>
+                    <h2>這次有多少人要一起吃飯？</h2>
                     <div class="people-selector">
                         <div class="people-input-group">
                             <label for="people-count">用餐人數：</label>
@@ -34,12 +39,10 @@
                             <span class="people-unit">人</span>
                         </div>
                         <div class="people-presets">
-                            <button class="people-btn" data-count="1">孤單總召 (1人)</button>
-                            <button class="people-btn" data-count="3">核心幹部密會 (3人)</button>
-                            <button class="people-btn" data-count="8">組長討論會 (8人)</button>
-                            <button class="people-btn" data-count="15">部門大聚餐 (15人)</button>
-                            <button class="people-btn" data-count="25">全體籌備會議 (25人)</button>
-                            <button class="people-btn ricky-special" data-count="ricky">🐙 Ricky 專屬海底撈</button>
+                            <button class="people-btn" data-count="3">小聚餐 (3人)</button>
+                            <button class="people-btn" data-count="8">中型聚餐 (8人)</button>
+                            <button class="people-btn" data-count="15">大型聚餐 (15人)</button>
+                            <button class="people-btn ricky-special" data-count="ricky">Ricky 專屬海底撈</button>
                         </div>
                         <button id="people-submit" class="btn btn-primary btn-large">開始尋找附近餐廳！</button>
                     </div>
@@ -53,7 +56,7 @@
             <!-- Step 2: Restaurant Search -->
             <section class="step" id="step-search" style="display: none;">
                 <div class="step-content">
-                    <h2>🔍 正在為 SITCON 籌備團隊隨機選擇餐廳</h2>
+                    <h2>正在為 SITCON 籌備團隊隨機選擇餐廳</h2>
                     <div class="search-status">
                         <div class="loading">
                             <div class="spinner"></div>
@@ -74,7 +77,7 @@
             <!-- Step 3: Result -->
             <section class="step" id="step-result" style="display: none;">
                 <div class="step-content">
-                    <h2>🎉 SITCON 籌會聚餐就決定這家了！</h2>
+                    <h2>SITCON 籌會聚餐就決定這家了！</h2>
                     <div class="result-container">
                         <div class="restaurant-result" id="final-restaurant">
                             <!-- Restaurant details will be populated here -->
@@ -84,10 +87,12 @@
                         </div>
                         <div class="result-actions">
                             <button id="view-on-google" class="btn btn-primary" target="_blank">
-                                🗺️ 在 Google Maps 查看
+                                在 Google Maps 查看
                             </button>
-                            <button id="reroll" class="btn btn-secondary">🎲 換一家試試</button>
-                            <button id="start-over" class="btn btn-tertiary">🏠 重新選地點</button>
+                            <button id="reroll" class="btn btn-secondary">換一家試試</button>
+                        </div>
+                        <div class="restart-corner">
+                            <button id="start-over" class="btn btn-tertiary btn-small">重新開始</button>
                         </div>
                     </div>
                 </div>
@@ -96,7 +101,7 @@
             <!-- Error Message -->
             <section class="error-section" id="error-section" style="display: none;">
                 <div class="error-content">
-                    <h2>😅 哎呀，出了點問題</h2>
+                    <h2>哎呀，出了點問題</h2>
                     <p id="error-message">請稍後再試或檢查您的網路連線</p>
                     <button id="retry-btn" class="btn btn-primary">重試</button>
                 </div>
@@ -104,7 +109,6 @@
         </main>
 
         <footer class="footer">
-            <p>Made with ❤️ for SITCON 籌備團隊</p>
         </footer>
     </div>
 

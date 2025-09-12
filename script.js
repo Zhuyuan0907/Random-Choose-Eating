@@ -292,15 +292,15 @@ out center;`;
             const distance = (restaurant.distance / 1000).toFixed(1);
             
             finalRestaurantEl.innerHTML = `
-                <div class="name" style="background: linear-gradient(135deg, #ff6b6b, #ff8e53); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">🐙 ${restaurant.name}</div>
+                <div class="name" style="background: linear-gradient(135deg, #ff6b6b, #ff8e53); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">${restaurant.name}</div>
                 <div class="details">
-                    <div class="detail" style="background: rgba(255, 107, 107, 0.1);">🔥 Ricky 專屬海底撈</div>
-                    <div class="detail">📍 距離 Mozilla Community Space ${distance} 公里</div>
-                    <div class="detail">👥 適合 ${this.peopleCount} 人火鍋聚餐</div>
-                    <div class="detail">🍲 火鍋料理</div>
-                    ${restaurant.address ? `<div class="detail">📮 ${restaurant.address}</div>` : ''}
-                    ${restaurant.phone ? `<div class="detail">📞 ${restaurant.phone}</div>` : ''}
-                    <div class="detail" style="color: #ff6b6b; font-weight: bold;">🎉 Ricky 應該會很開心！</div>
+                    <div class="detail" style="background: rgba(255, 107, 107, 0.1);">Ricky 專屬海底撈</div>
+                    <div class="detail">距離 Mozilla Community Space ${distance} 公里</div>
+                    <div class="detail">適合 ${this.peopleCount} 人火鍋聚餐</div>
+                    <div class="detail">火鍋料理</div>
+                    ${restaurant.address ? `<div class="detail">地址：${restaurant.address}</div>` : ''}
+                    ${restaurant.phone ? `<div class="detail">電話：${restaurant.phone}</div>` : ''}
+                    <div class="detail" style="color: #ff6b6b; font-weight: bold;">Ricky 應該會很開心！</div>
                 </div>
             `;
         }
@@ -686,12 +686,12 @@ out center;`;
             finalRestaurantEl.innerHTML = `
                 <div class="name">${restaurant.name}</div>
                 <div class="details">
-                    <div class="detail">🏷️ ${amenityText}</div>
-                    <div class="detail">📍 距離 Mozilla Community Space ${distance} 公里</div>
-                    <div class="detail">👥 適合 ${this.peopleCount} 人聚餐</div>
-                    ${restaurant.cuisine ? `<div class="detail">🍽️ ${restaurant.cuisine}</div>` : ''}
-                    ${restaurant.address ? `<div class="detail">📮 ${restaurant.address}</div>` : ''}
-                    ${restaurant.phone ? `<div class="detail">📞 ${restaurant.phone}</div>` : ''}
+                    <div class="detail">${amenityText}</div>
+                    <div class="detail">距離 Mozilla Community Space ${distance} 公里</div>
+                    <div class="detail">適合 ${this.peopleCount} 人聚餐</div>
+                    ${restaurant.cuisine ? `<div class="detail">菜系：${restaurant.cuisine}</div>` : ''}
+                    ${restaurant.address ? `<div class="detail">地址：${restaurant.address}</div>` : ''}
+                    ${restaurant.phone ? `<div class="detail">電話：${restaurant.phone}</div>` : ''}
                 </div>
             `;
         }
@@ -780,9 +780,9 @@ out center;`;
             const openMapBtn = document.createElement('button');
             openMapBtn.className = 'btn btn-primary';
             openMapBtn.style.cssText = `font-size: 0.9rem; padding: 0.5rem 1rem;`;
-            openMapBtn.innerHTML = '🗺️ 在 Google Maps 開啟';
+            openMapBtn.innerHTML = '在 Google Maps 開啟';
             openMapBtn.onclick = () => {
-                const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}&query_place_id=${encodeURIComponent(restaurantName)}`;
+                const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
                 window.open(url, '_blank');
             };
             
@@ -823,7 +823,7 @@ out center;`;
                 <button class="btn btn-primary" onclick="
                     window.open('https://www.google.com/maps/search/?api=1&query=${restaurant.lat},${restaurant.lng}', '_blank')
                 " style="font-size: 0.9rem;">
-                    🗺️ 在 Google Maps 中查看
+                    在 Google Maps 中查看
                 </button>
             </div>
         `;
@@ -836,7 +836,8 @@ out center;`;
         const lng = this.selectedRestaurant.lng;
         const name = encodeURIComponent(this.selectedRestaurant.name);
         
-        const url = `https://www.google.com/maps/search/?api=1&query=${name}&query_place_id=&center=${lat},${lng}`;
+        // 使用統一的搜索格式，直接定位到餐廳
+        const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
         window.open(url, '_blank');
     }
 

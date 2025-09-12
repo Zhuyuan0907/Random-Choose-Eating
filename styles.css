@@ -41,6 +41,23 @@ body {
     text-align: center;
 }
 
+.title-with-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.sitcon-logo {
+    height: 60px;
+    width: auto;
+}
+
+.title-text {
+    text-align: center;
+}
+
 .header h1 {
     font-size: 2.5rem;
     margin-bottom: 0.5rem;
@@ -181,6 +198,17 @@ body {
 .btn-large {
     padding: 1.5rem 3rem;
     font-size: 1.2rem;
+}
+
+.btn-small {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+.restart-corner {
+    position: relative;
+    margin-top: 1rem;
+    text-align: right;
 }
 
 /* People Selection */
@@ -500,6 +528,13 @@ body {
         grid-column: 1 / -1;
         justify-content: center;
     }
+    
+    .restart-corner {
+        grid-column: 1 / -1;
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 1rem;
+    }
 }
 
 @media (max-width: 767px) {
@@ -510,6 +545,15 @@ body {
     .header-content {
         flex-direction: column;
         text-align: center;
+    }
+    
+    .title-with-logo {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .sitcon-logo {
+        height: 40px;
     }
     
     .time-selector-header {
