@@ -657,7 +657,8 @@ out center;`;
             const amenityText = this.getAmenityText(restaurant.amenity);
             let info = `${amenityText} • ${distance}km`;
             if (restaurant.cuisine) {
-                info += ` • ${restaurant.cuisine}`;
+                const cuisineText = this.getCuisineText(restaurant.cuisine);
+                info += ` • ${cuisineText}`;
             }
             infoElement.textContent = info;
         }
@@ -671,6 +672,33 @@ out center;`;
             'food_court': '美食廣場'
         };
         return amenityMap[amenity] || '餐廳';
+    }
+
+    getCuisineText(cuisine) {
+        const cuisineMap = {
+            'hot_pot': '火鍋',
+            'taiwanese': '台式料理',
+            'chinese': '中式料理',
+            'japanese': '日式料理',
+            'korean': '韓式料理',
+            'italian': '義式料理',
+            'american': '美式料理',
+            'thai': '泰式料理',
+            'vietnamese': '越式料理',
+            'indian': '印度料理',
+            'western': '西式料理',
+            'seafood': '海鮮料理',
+            'bbq': '燒烤',
+            'noodles': '麵食',
+            'pizza': '披薩',
+            'burger': '漢堡',
+            'coffee': '咖啡輕食',
+            'dessert': '甜點',
+            'various': '多元料理',
+            'asian': '亞洲料理',
+            'international': '國際料理'
+        };
+        return cuisineMap[cuisine] || cuisine;
     }
 
     showFinalResult(restaurant) {
@@ -689,7 +717,7 @@ out center;`;
                     <div class="detail">${amenityText}</div>
                     <div class="detail">距離 Mozilla Community Space ${distance} 公里</div>
                     <div class="detail">適合 ${this.peopleCount} 人聚餐</div>
-                    ${restaurant.cuisine ? `<div class="detail">菜系：${restaurant.cuisine}</div>` : ''}
+                    ${restaurant.cuisine ? `<div class="detail">菜系：${this.getCuisineText(restaurant.cuisine)}</div>` : ''}
                     ${restaurant.address ? `<div class="detail">地址：${restaurant.address}</div>` : ''}
                     ${restaurant.phone ? `<div class="detail">電話：${restaurant.phone}</div>` : ''}
                 </div>

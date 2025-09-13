@@ -1,146 +1,176 @@
-# 🍽️ 晚餐選擇器 (Random Dinner Selector)
+# 🍽️ SITCON 籌會晚餐選擇器
 
-一個幫助你隨機選擇附近餐廳的網頁應用程式！輸入你的位置和用餐時間，我們會找到附近餐廳並隨機推薦一家。
+專為 SITCON 籌備團隊設計的餐廳選擇器！解決每次聚餐時「要吃什麼」的選擇困難症，基於 Mozilla Community Space 的位置隨機推薦附近適合的餐廳。
 
-**🔓 完全免費！無需任何 API 金鑰！** 使用 OpenStreetMap 和開源技術實現。
+**🎯 定位 Mozilla Community Space**：台北市中正區重慶南路一段99號1105室（台北車站附近）
+
+**🔓 完全免費！** 使用 OpenStreetMap 開源技術，無需任何 API 金鑰！
 
 ## ✨ 功能特色
 
-- 📍 **智慧定位**：輸入地址或使用瀏覽器定位功能
-- 🕒 **時間過濾**：根據用餐時間篩選可能營業的餐廳
-- 🎲 **隨機選擇**：酷炫的輪盤動畫隨機推薦餐廳
-- 🗺️ **地圖整合**：使用 OpenStreetMap 顯示位置，支援 Google Maps 連結
-- 📱 **響應式設計**：完美支援桌面和手機介面
-- 🎨 **流暢動畫**：精美的使用者介面和互動體驗
-- 🔓 **完全免費**：無需註冊或 API 金鑰，基於開源技術
+- 👥 **人數導向**：根據聚餐人數（1-50人）推薦適合的餐廳
+- 📍 **固定據點**：專為 Mozilla Community Space 附近設計，步行可達
+- 🎲 **隨機選擇**：解決選擇困難症，酷炫輪盤動畫選餐廳
+- 🐙 **Ricky 專屬**：特殊海底撈搜尋功能，滿足火鍋愛好者
+- 🗺️ **智慧導航**：整合 Google Maps，支援手機直接導航
+- 📱 **手機優化**：專為手機使用設計，隨時隨地選餐廳
+- 🏷️ **中文介面**：菜系類型、餐廳資訊完全中文化
+- 🚫 **過濾飲料店**：專注於正餐餐廳，排除純飲料店
+
+## 👥 人數設定
+
+### 快速選擇按鈕
+- **小聚餐 (3人)**：適合核心幹部小聚
+- **中型聚餐 (8人)**：標準工作小組聚餐
+- **大型聚餐 (15人)**：部門聚餐或大型慶祝
+- **🐙 Ricky 專屬海底撈**：專門搜尋火鍋餐廳
+
+### 自訂人數
+支援 1-50 人的自由設定，系統會根據人數推薦適合的餐廳類型。
 
 ## 🚀 快速開始
 
-### 1. 克隆專案
+### 1. 線上使用（推薦）
+
+直接在瀏覽器中開啟部署的網站即可使用，無需任何設定！
+
+### 2. 本地開發
 
 ```bash
-git clone https://github.com/your-username/Random-Choose-Eating.git
+# 克隆專案
+git clone https://github.com/Zhuyuan0907/Random-Choose-Eating.git
 cd Random-Choose-Eating
-```
 
-### 2. 直接使用 - 無需設定！
-
-由於使用開源 API，你可以直接開始使用，無需任何設定步驟！
-
-### 3. 本地測試
-
-直接在瀏覽器中開啟 `index.html` 或使用本地伺服器：
-
-```bash
-# 使用 Python
+# 使用本地伺服器（選擇其一）
 python -m http.server 8000
-
-# 使用 Node.js
+# 或
 npx serve .
-
-# 使用 PHP
+# 或  
 php -S localhost:8000
+
+# 開啟瀏覽器
+open http://localhost:8000
 ```
-
-然後在瀏覽器中開啟 `http://localhost:8000`
-
-## 🌐 部署到 Cloudflare Pages
-
-### 方法一：通過 Git 連接
-
-1. 將程式碼推送到 GitHub
-2. 登入 [Cloudflare Pages](https://pages.cloudflare.com/)
-3. 點選「建立專案」→「連接到 Git」
-4. 選擇你的儲存庫
-5. 無需設定任何環境變數！
-6. 點選「儲存並部署」
-
-### 方法二：直接上傳
-
-1. 將所有檔案打包成 ZIP
-2. 在 Cloudflare Pages 中選擇「直接上傳」
-3. 上傳 ZIP 檔案並部署
-
-**🎉 就這麼簡單！無需設定 API 金鑰或環境變數！**
 
 ## 📁 專案結構
 
 ```
-Random-Choose-Eating/
-├── index.html          # 主頁面
-├── styles.css          # 樣式表
-├── script.js           # 主要邏輯
-├── config.js           # API 設定
-├── config.example.js   # 設定範例
-├── _headers            # Cloudflare Pages 標頭設定
-└── README.md          # 說明文件
+SITCON-Restaurant-Selector/
+├── index.html              # 主頁面
+├── styles.css              # SITCON 品牌樣式
+├── script.js               # 主要邏輯 (SITCONRestaurantSelector)
+├── config.js               # 設定檔（Mozilla Community Space 位置等）
+├── sitcon-logo.svg         # SITCON Logo（綠色版）
+├── sitcon-logo-white.svg   # SITCON Logo（白色版）
+└── README.md              # 說明文件
 ```
 
-## 🎮 使用方法
+## 🎮 使用流程
 
-1. **輸入位置**：在首頁輸入你目前的地址或位置
-2. **選擇時間**：設定你想要用餐的時間
-3. **搜尋餐廳**：系統會自動搜尋附近營業中的餐廳
-4. **隨機選擇**：點選「開始選擇」享受轉盤動畫
-5. **查看結果**：獲得推薦餐廳，可在 Google Maps 中查看
-6. **重新選擇**：不滿意結果？點選「再來一次」
+1. **設定人數**：選擇聚餐人數或使用快速按鈕
+2. **開始搜尋**：系統自動搜尋 Mozilla Community Space 附近餐廳
+3. **輪盤選擇**：享受隨機選擇的動畫過程
+4. **查看結果**：獲得推薦餐廳和詳細資訊
+5. **導航出發**：點選 Google Maps 連結直接導航
+6. **重新選擇**：不滿意？點選「換一家試試」
 
-## ⚙️ 設定選項
+## ⚙️ 技術設定
 
-在 `config.js` 中可以調整以下設定：
+### 固定位置設定
+```javascript
+// config.js
+const FIXED_LOCATION = {
+    name: 'Mozilla Community Space',
+    lat: 25.0465,
+    lng: 121.5155,
+    address: '台北市中正區重慶南路一段99號1105室'
+};
+```
 
-- `SEARCH_RADIUS`: 搜尋半徑（公尺，預設 2000）
-- `DEFAULT_LOCATION`: 預設位置座標
-- `ANIMATION.ROULETTE_DURATION`: 轉盤動畫時長
-- `SEARCH.PLACE_TYPES`: 搜尋的地點類型
-- `SEARCH.MIN_RATING`: 最低評分篩選
-- `SEARCH.MAX_RESULTS`: 最大搜尋結果數
+### 搜尋參數
+- **搜尋半徑**：800公尺（步行可達距離）
+- **餐廳類型**：restaurant, fast_food（排除 cafe, bar）
+- **菜系支援**：火鍋、台式料理、中式料理、日式料理等
+- **資料來源**：OpenStreetMap + Overpass API
 
 ## 🔧 技術規格
 
-- **前端**: HTML5, CSS3, JavaScript (ES6+)
-- **地圖**: Leaflet.js + OpenStreetMap 瓦片
-- **資料 API**: 
-  - Nominatim API (OpenStreetMap 地理編碼)
-  - Overpass API (OpenStreetMap 資料查詢)
-- **部署**: 靜態網站（支援 Cloudflare Pages, Netlify, Vercel 等）
-- **相容性**: 支援現代瀏覽器（Chrome, Firefox, Safari, Edge）
-- **費用**: 完全免費，無 API 配額限制
+- **前端框架**：原生 JavaScript ES6+
+- **樣式設計**：CSS3 with SITCON 品牌色彩 (#77B55A)
+- **地圖服務**：Google Maps（導航）+ OpenStreetMap（資料）
+- **API 服務**：
+  - Overpass API（餐廳資料查詢）
+  - Nominatim API（地址解析）
+- **響應式設計**：支援桌面、平板、手機
+- **部署方式**：靜態網站（Cloudflare Pages, Netlify, Vercel）
 
-## 📱 響應式設計
+## 📱 裝置支援
 
-- **桌面版**: 完整地圖顯示和豐富互動
-- **手機版**: 簡化介面，文字為主，Google Maps 連結
-- **平板版**: 自適應介面，兼顧功能和美觀
+### 桌面版
+- 完整功能展示
+- 內嵌地圖預覽
+- 滑鼠懸停效果
+
+### 手機版
+- 觸控優化介面
+- 直接導航功能
+- 簡化資訊展示
+- SITCON Logo 自動縮放
+
+## 🍜 支援菜系
+
+系統會自動將英文菜系翻譯為中文：
+
+- 🔥 **火鍋** (hot_pot)
+- 🥢 **台式料理** (taiwanese)  
+- 🥡 **中式料理** (chinese)
+- 🍱 **日式料理** (japanese)
+- 🌶️ **韓式料理** (korean)
+- 🍝 **義式料理** (italian)
+- 🍔 **美式料理** (american)
+- 🌮 **多元料理** (various)
 
 ## 🐛 常見問題
 
-### 網路連線相關
-- **地圖無法載入**: 檢查網路連線是否正常
-- **搜尋無結果**: 確認網路可以存取外部 API (Nominatim, Overpass)
-- **定位失敗**: 確認瀏覽器允許定位權限，或手動輸入地址
+### 使用問題
+**Q: 為什麼搜尋不到餐廳？**  
+A: 檢查網路連線，Overpass API 偶爾會較慢，請稍等或重試。
 
-### 使用問題  
-- **找不到餐廳**: 嘗試調整時間或搜尋不同地點
-- **頁面載入慢**: 檢查網路連線，Overpass API 有時會比較慢
-- **餐廳資料不準確**: 資料來源為 OpenStreetMap，可能不如 Google 完整
+**Q: 推薦的餐廳太遠？**  
+A: 系統限制在 800 公尺內，如果選項太少可能會擴大範圍。
+
+**Q: Ricky 專屬功能找不到海底撈？**  
+A: 搜尋範圍內可能沒有火鍋店，系統會自動搜尋其他火鍋類餐廳。
 
 ### 技術問題
-- **CORS 錯誤**: 使用本地伺服器而非直接開啟 HTML 檔案
-- **API 超時**: 網路較慢時可能需要等待較長時間
+**Q: 手機點選 Google Maps 後無法回到原頁面？**  
+A: 已針對手機優化，會直接在當前分頁開啟導航。
 
-## 🤝 貢獻
+**Q: Loading 圓圈變成橢圓？**  
+A: 已修復手機版 CSS 問題，確保載入動畫保持圓形。
 
-歡迎提交 Issue 和 Pull Request！
+## 🤝 貢獻指南
+
+歡迎 SITCON 社群成員提出建議和改進！
+
+1. Fork 專案
+2. 建立功能分支 (`git checkout -b feature/amazing-feature`)
+3. 提交變更 (`git commit -m 'Add amazing feature'`)
+4. 推送分支 (`git push origin feature/amazing-feature`)
+5. 開啟 Pull Request
 
 ## 📄 授權
 
-MIT License
+MIT License - 詳見 [LICENSE](LICENSE) 檔案
 
 ## 🙏 致謝
 
-- 感謝 **OpenStreetMap** 社群提供免費的地圖資料
-- 感謝 **Nominatim** 提供免費的地理編碼服務  
-- 感謝 **Overpass API** 提供 OpenStreetMap 資料查詢服務
-- 感謝 **Leaflet.js** 提供優秀的地圖展示庫
-- 感謝所有貢獻 OpenStreetMap 資料的志願者們
+- **SITCON 社群**：提供使用場景和需求回饋
+- **Mozilla Community Space**：提供聚餐據點
+- **OpenStreetMap 社群**：提供免費地圖資料
+- **Overpass API**：提供餐廳資料查詢服務
+- **所有貢獻者**：讓這個工具變得更好用
+
+---
+
+**讓 SITCON 籌備聚餐不再有選擇困難症！** 🎉
