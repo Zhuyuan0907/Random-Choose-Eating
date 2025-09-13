@@ -802,7 +802,8 @@ out center;`;
                     距離 Mozilla Community Space ${(restaurant.distance/1000).toFixed(1)}km
                 </div>
                 <button class="btn btn-primary" onclick="
-                    window.open('https://www.google.com/maps/search/${encodeURIComponent(restaurant.name)}+@${restaurant.lat},${restaurant.lng}', '_blank')
+                    const searchQuery = '${restaurant.name}' + (('${restaurant.address}' && '${restaurant.address}'.trim()) ? ' ${restaurant.address}' : '');
+                    window.open('https://www.google.com/maps/search/' + encodeURIComponent(searchQuery) + '/@${restaurant.lat},${restaurant.lng},18z', '_blank');
                 " style="font-size: 0.9rem;">
                     在 Google Maps 中查看
                 </button>
@@ -816,9 +817,16 @@ out center;`;
         const lat = this.selectedRestaurant.lat;
         const lng = this.selectedRestaurant.lng;
         const name = encodeURIComponent(this.selectedRestaurant.name);
+        const address = this.selectedRestaurant.address ? encodeURIComponent(this.selectedRestaurant.address) : '';
         
-        // 使用更精確的搜尋格式，嘗試直接找到餐廳頁面
-        const url = `https://www.google.com/maps/search/${name}+@${lat},${lng}`;
+        // 構建更精確的搜尋查詢，包含餐廳名稱和地址資訊
+        let searchQuery = this.selectedRestaurant.name;
+        if (this.selectedRestaurant.address && this.selectedRestaurant.address.trim()) {
+            searchQuery += ' ' + this.selectedRestaurant.address;
+        }
+        
+        // 使用精確座標和完整地址資訊來找到特定分店
+        const url = `https://www.google.com/maps/search/${encodeURIComponent(searchQuery)}/@${lat},${lng},18z`;
         window.open(url, '_blank');
     }
 
