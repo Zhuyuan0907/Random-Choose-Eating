@@ -874,6 +874,12 @@ out center;`;
             defaultBtn.classList.add('active');
         }
         
+        // Hide roulette display
+        const rouletteDisplay = document.getElementById('roulette-display');
+        if (rouletteDisplay) {
+            rouletteDisplay.style.display = 'none';
+        }
+        
         this.showStep('people-count');
         
         if (peopleInput) {
