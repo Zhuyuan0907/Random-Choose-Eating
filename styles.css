@@ -436,6 +436,11 @@ body {
     position: relative;
     width: 100%;
     box-sizing: border-box;
+    pointer-events: none;
+}
+
+.map-container iframe {
+    pointer-events: none;
 }
 
 .result-actions {
@@ -566,7 +571,7 @@ body {
     }
     
     .sitcon-logo-inline {
-        height: 1.8em;
+        height: 2.2em;
         flex-shrink: 0;
     }
     
@@ -641,7 +646,7 @@ body {
     }
     
     .sitcon-logo-inline {
-        height: 1.6em;
+        height: 2em;
     }
     
     .restaurant-card {

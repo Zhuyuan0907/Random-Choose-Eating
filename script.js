@@ -803,7 +803,12 @@ out center;`;
                 </div>
                 <button class="btn btn-primary" onclick="
                     const searchQuery = '${restaurant.name}' + (('${restaurant.address}' && '${restaurant.address}'.trim()) ? ' ${restaurant.address}' : '');
-                    window.open('https://www.google.com/maps/search/' + encodeURIComponent(searchQuery) + '/@${restaurant.lat},${restaurant.lng},18z', '_blank');
+                    const url = 'https://www.google.com/maps/search/' + encodeURIComponent(searchQuery) + '/@${restaurant.lat},${restaurant.lng},18z';
+                    if (window.innerWidth < 768) {
+                        window.location.href = url;
+                    } else {
+                        window.open(url, '_blank');
+                    }
                 " style="font-size: 0.9rem;">
                     在 Google Maps 中查看
                 </button>
@@ -827,7 +832,15 @@ out center;`;
         
         // 使用精確座標和完整地址資訊來找到特定分店
         const url = `https://www.google.com/maps/search/${encodeURIComponent(searchQuery)}/@${lat},${lng},18z`;
-        window.open(url, '_blank');
+        
+        // 檢測是否為手機設備，使用不同的開啟方式
+        if (this.isMobile) {
+            // 手機版直接設置 location.href，避免 about:blank 問題
+            window.location.href = url;
+        } else {
+            // 桌面版使用新視窗開啟
+            window.open(url, '_blank');
+        }
     }
 
     rerollRestaurant() {
