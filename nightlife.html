@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SITCON 籌會宵夜續攤選擇器 - 散會後去哪續攤？</title>
+    <meta name="description" content="為 SITCON 籌備團隊隨機選擇 Mozilla Community Space 附近的宵夜續攤地點！包含宵夜餐廳、酒吧、居酒屋等。">
+    <link rel="stylesheet" href="nightlife-styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="sitcon-favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="sitcon-social.png">
+    <link rel="apple-touch-icon" href="sitcon-social.png">
+    
+    <!-- Open Graph Meta Tags for Social Media Preview -->
+    <meta property="og:title" content="SITCON 籌會宵夜續攤選擇器 - 散會後去哪續攤？">
+    <meta property="og:description" content="為 SITCON 籌備團隊隨機選擇 Mozilla Community Space 附近的宵夜續攤地點！包含宵夜餐廳、酒吧、居酒屋等。">
+    <meta property="og:image" content="sitcon-social.png">
+    <meta property="og:url" content="https://sitcon-restaurant-selector.pages.dev/nightlife.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="SITCON 籌會宵夜續攤選擇器">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="SITCON 籌會宵夜續攤選擇器">
+    <meta name="twitter:description" content="為 SITCON 籌備團隊隨機選擇宵夜續攤地點，包含酒吧、居酒屋、宵夜餐廳！">
+    <meta name="twitter:image" content="sitcon-social.png">
+    
+    <!-- Additional Meta Tags -->
+    <meta name="theme-color" content="#4A90E2">
+    <meta name="author" content="SITCON Community">
+    <meta name="keywords" content="SITCON,籌備團隊,宵夜,續攤,酒吧,居酒屋,Mozilla Community Space,台北夜生活,隨機選擇">
+    
+    <!-- Google Maps will be loaded dynamically -->
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <div class="title-section">
+                    <h1 class="title-with-inline-logo">
+                        <img src="sitcon-logo-white.svg" alt="SITCON" class="sitcon-logo-inline"> 籌會宵夜續攤選擇器
+                    </h1>
+                    <p class="subtitle">散會後繼續聚聚？讓我們幫你決定去哪續攤！</p>
+                </div>
+            </div>
+        </header>
+
+        <main class="main">
+            <!-- Step 1: People Count Input -->
+            <section class="step" id="step-people-count">
+                <div class="step-content">
+                    <h2>這次有多少人要一起續攤？</h2>
+                    <div class="people-selector">
+                        <div class="people-input-group">
+                            <label for="people-count">續攤人數：</label>
+                            <input type="number" id="people-count" min="1" max="30" value="5" placeholder="例如：5">
+                            <span class="people-unit">人</span>
+                        </div>
+                        <div class="people-presets">
+                            <button class="people-btn" data-count="2">小酌 (2人)</button>
+                            <button class="people-btn" data-count="5">小組續攤 (5人)</button>
+                            <button class="people-btn" data-count="10">部門聚會 (10人)</button>
+                            <button class="people-btn beer-special" data-count="beer">🍺 找間好酒吧</button>
+                        </div>
+                        <button id="people-submit" class="btn btn-primary btn-large">開始尋找續攤地點！</button>
+                    </div>
+                    <div class="loading" id="people-loading" style="display: none;">
+                        <div class="spinner"></div>
+                        <span>正在尋找適合的續攤地點...</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 2: Place Search -->
+            <section class="step" id="step-search" style="display: none;">
+                <div class="step-content">
+                    <h2>正在為 SITCON 籌備團隊尋找續攤地點</h2>
+                    <div class="search-status">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <span id="search-status-text">搜尋中...</span>
+                        </div>
+                    </div>
+                    <div class="restaurant-roulette" id="roulette-display" style="display: none;">
+                        <div class="roulette-container">
+                            <div class="restaurant-card" id="current-restaurant">
+                                <div class="restaurant-name">準備中...</div>
+                                <div class="restaurant-info"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 3: Result -->
+            <section class="step" id="step-result" style="display: none;">
+                <div class="step-content">
+                    <h2>SITCON 籌會續攤就決定這裡了！</h2>
+                    <div class="result-container">
+                        <div class="restaurant-result" id="final-restaurant">
+                            <!-- Place details will be populated here -->
+                        </div>
+                        <div class="map-container" id="map-container">
+                            <!-- Map will be loaded here on desktop -->
+                        </div>
+                        <div class="result-actions">
+                            <button id="view-on-google" class="btn btn-primary" target="_blank">
+                                在 Google Maps 查看
+                            </button>
+                            <button id="reroll" class="btn btn-secondary">換一家試試</button>
+                        </div>
+                        <div class="restart-corner">
+                            <button id="start-over" class="btn btn-tertiary btn-small">重新開始</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Error Message -->
+            <section class="error-section" id="error-section" style="display: none;">
+                <div class="error-content">
+                    <h2>哎呀，出了點問題</h2>
+                    <p id="error-message">請稍後再試或檢查您的網路連線</p>
+                    <button id="retry-btn" class="btn btn-primary">重試</button>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>散會後的續攤時光，讓選擇變得更簡單 🌙</p>
+        </footer>
+    </div>
+
+    <!-- Google Maps API will be loaded by the application -->
+    <script src="nightlife-config.js"></script>
+    <script src="nightlife-script.js"></script>
+    <script>
+        // Initialize the SITCON nightlife app when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            window.sitconNightlife = new SITCONNightlifeSelector();
+        });
+    </script>
+</body>
+</html>
