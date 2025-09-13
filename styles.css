@@ -39,6 +39,30 @@ body {
     gap: 1rem;
 }
 
+.nightlife-link-section {
+    display: flex;
+    align-items: center;
+}
+
+.btn-nightlife {
+    background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 20px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+.btn-nightlife:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
+    background: linear-gradient(135deg, #357ABD 0%, #2968A3 100%);
+}
+
 .title-section {
     flex: 1;
     text-align: center;

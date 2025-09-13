@@ -162,7 +162,8 @@ class SITCONNightlifeSelector {
                 amenity: 'bar',
                 cuisine: 'beer',
                 address: '台北市中正區北平西路3號2樓',
-                phone: '02-2311-8832'
+                phone: '02-2311-8832',
+                hours: '週一至週日 11:30-01:00'
             },
             {
                 name: 'Brass Monkey 銅猴子酒吧',
@@ -171,7 +172,18 @@ class SITCONNightlifeSelector {
                 distance: this.calculateDistance(25.0425, 121.5148, this.fixedLocation.lat, this.fixedLocation.lng),
                 amenity: 'bar',
                 cuisine: 'cocktails',
-                address: '台北市中正區臨沂街27巷1號'
+                address: '台北市中正區臨沂街27巷1號',
+                hours: '週二至週日 19:00-02:00'
+            },
+            {
+                name: 'Draft Land 精釀啤酒吧',
+                lat: 25.0441,
+                lng: 121.5147,
+                distance: this.calculateDistance(25.0441, 121.5147, this.fixedLocation.lat, this.fixedLocation.lng),
+                amenity: 'bar',
+                cuisine: 'beer',
+                address: '台北市中正區八德路一段1號',
+                hours: '週一至週日 17:00-01:00'
             }
         ];
         
@@ -188,8 +200,61 @@ class SITCONNightlifeSelector {
     async searchNightlifeVenues() {
         const radius = window.NIGHTLIFE_CONFIG?.SEARCH_RADIUS || 1200;
         
-        // Add some known late-night venues
+        // 重新設計：專注於24小時或深夜營業的場所
         this.venues = [
+            // 24小時速食
+            {
+                name: '麥當勞台北車站店',
+                lat: 25.0479,
+                lng: 121.5170,
+                distance: this.calculateDistance(25.0479, 121.5170, this.fixedLocation.lat, this.fixedLocation.lng),
+                amenity: 'fast_food',
+                cuisine: 'burger',
+                address: '台北市中正區北平西路3號1樓',
+                hours: '24小時營業'
+            },
+            {
+                name: 'Sukiya 牛丼台北車站店',
+                lat: 25.0475,
+                lng: 121.5168,
+                distance: this.calculateDistance(25.0475, 121.5168, this.fixedLocation.lat, this.fixedLocation.lng),
+                amenity: 'fast_food',
+                cuisine: 'japanese',
+                address: '台北市中正區館前路8號',
+                hours: '24小時營業'
+            },
+            {
+                name: '吉野家台北車站店',
+                lat: 25.0481,
+                lng: 121.5172,
+                distance: this.calculateDistance(25.0481, 121.5172, this.fixedLocation.lat, this.fixedLocation.lng),
+                amenity: 'fast_food',
+                cuisine: 'japanese',
+                address: '台北市中正區館前路6號',
+                hours: '24小時營業'
+            },
+            // 深夜咖啡廳
+            {
+                name: 'Starbucks 台北車站門市',
+                lat: 25.0477,
+                lng: 121.5169,
+                distance: this.calculateDistance(25.0477, 121.5169, this.fixedLocation.lat, this.fixedLocation.lng),
+                amenity: 'cafe',
+                cuisine: 'coffee',
+                address: '台北市中正區北平西路3號',
+                hours: '05:30-24:00'
+            },
+            {
+                name: '7-Eleven 思源門市',
+                lat: 25.0468,
+                lng: 121.5156,
+                distance: this.calculateDistance(25.0468, 121.5156, this.fixedLocation.lat, this.fixedLocation.lng),
+                amenity: 'convenience_store',
+                cuisine: 'convenience',
+                address: '台北市中正區重慶南路一段121號',
+                hours: '24小時營業'
+            },
+            // 深夜餐廳
             {
                 name: '海底撈火鍋台北西門店',
                 lat: 25.0420,
@@ -197,27 +262,34 @@ class SITCONNightlifeSelector {
                 distance: this.calculateDistance(25.0420, 121.5087, this.fixedLocation.lat, this.fixedLocation.lng),
                 amenity: 'restaurant',
                 cuisine: 'hot_pot',
-                address: '台北市萬華區中華路一段114號'
+                address: '台北市萬華區中華路一段114號',
+                hours: '週日至週四 11:00-04:00，週五至週六 11:00-05:00'
             },
             {
-                name: '鼎泰豐台北車站店',
+                name: '台北車站地下街美食街',
                 lat: 25.0478,
-                lng: 121.5171,
-                distance: this.calculateDistance(25.0478, 121.5171, this.fixedLocation.lat, this.fixedLocation.lng),
-                amenity: 'restaurant',
-                cuisine: 'taiwanese',
-                address: '台北市中正區北平西路3號'
+                lng: 121.5170,
+                distance: this.calculateDistance(25.0478, 121.5170, this.fixedLocation.lat, this.fixedLocation.lng),
+                amenity: 'food_court',
+                cuisine: 'various',
+                address: '台北市中正區市民大道一段100號B1',
+                hours: '部分店家營業至23:00'
             }
         ];
         
-        try {
-            await this.searchOverpassVenues(['restaurant', 'bar', 'pub', 'cafe']);
-        } catch (error) {
-            console.warn('Overpass search failed, using fallback venues');
-        }
-        
+        // 過濾距離並按24小時營業優先排序
         this.venues = this.venues.filter(venue => venue.distance <= radius);
-        this.updateSearchStatus(`找到 ${this.venues.length} 個適合續攤的地點`);
+        this.venues.sort((a, b) => {
+            // 24小時營業的排在前面
+            const a24h = a.hours?.includes('24小時');
+            const b24h = b.hours?.includes('24小時');
+            if (a24h && !b24h) return -1;
+            if (!a24h && b24h) return 1;
+            // 然後按距離排序
+            return a.distance - b.distance;
+        });
+        
+        this.updateSearchStatus(`找到 ${this.venues.length} 個適合宵夜續攤的24小時場所`);
     }
 
     async searchOverpassVenues(venueTypes) {
@@ -411,7 +483,8 @@ out center;`;
             'pub': '酒館',
             'cafe': '咖啡廳',
             'fast_food': '速食',
-            'food_court': '美食廣場'
+            'food_court': '美食廣場',
+            'convenience_store': '便利商店'
         };
         return amenityMap[amenity] || '續攤地點';
     }
@@ -433,7 +506,7 @@ out center;`;
             'bbq': '燒烤',
             'noodles': '麵食',
             'pizza': '披薩',
-            'burger': '漢堡',
+            'burger': '速食漢堡',
             'coffee': '咖啡輕食',
             'dessert': '甜點',
             'various': '多元料理',
@@ -441,7 +514,8 @@ out center;`;
             'international': '國際料理',
             'beer': '啤酒',
             'cocktails': '調酒',
-            'wine': '紅酒'
+            'wine': '紅酒',
+            'convenience': '便利商店'
         };
         return cuisineMap[cuisine] || cuisine;
     }
@@ -461,6 +535,7 @@ out center;`;
                     <div class="detail">距離 Mozilla Community Space ${distance} 公里</div>
                     <div class="detail">適合 ${this.peopleCount} 人續攤</div>
                     ${venue.cuisine ? `<div class="detail">類型：${this.getCuisineText(venue.cuisine)}</div>` : ''}
+                    ${venue.hours ? `<div class="detail">營業時間：${venue.hours}</div>` : ''}
                     ${venue.address ? `<div class="detail">地址：${venue.address}</div>` : ''}
                     ${venue.phone ? `<div class="detail">電話：${venue.phone}</div>` : ''}
                 </div>
@@ -475,8 +550,11 @@ out center;`;
         if (!this.isMobile) {
             const mapContainer = document.getElementById('map-container');
             if (mapContainer) {
-                const mapUrl = `https://www.google.com/maps/embed/v1/place?key=${window.NIGHTLIFE_CONFIG?.MAP?.GOOGLE_MAPS_API_KEY || ''}&q=${encodeURIComponent(venue.name + ' ' + (venue.address || ''))}&center=${venue.lat},${venue.lng}&zoom=16`;
-                mapContainer.innerHTML = `<iframe width="100%" height="100%" frameborder="0" style="border:0" src="${mapUrl}" allowfullscreen></iframe>`;
+                // 使用簡單的地圖連結，不需要 API key
+                mapContainer.innerHTML = `<div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f0f0f0; color: #666; flex-direction: column;">
+                    <p>📍 ${venue.name}</p>
+                    <p style="font-size: 0.9em;">點擊下方按鈕在地圖中查看</p>
+                </div>`;
             }
         }
     }
